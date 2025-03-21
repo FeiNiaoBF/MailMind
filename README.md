@@ -20,7 +20,7 @@
 - **AI 核心功能**：
     - 任务可使用任意AI模型例如 OpenAI API 或 DeepSeek API 进行文本分析和总结。
     - 任务执行后，需返回结构化（JSON？）的结果，供前端用户查看。
-- 定时任务：
+- **定时任务**：
     - 每隔⼀段时间（如 1 小时）自动运行⼀次任务，获取最新信息并进行 AI 分析。
 
 ### 前端功能
@@ -48,8 +48,6 @@ graph TD
     I --> J[生成分析报告]
     J --> K[生成报告并邮件发送]
    ```
-
-
 
 [flask](https://flask.palletsprojects.com/en/stable/)
 [AI SDK](https://sdk.vercel.ai/)
