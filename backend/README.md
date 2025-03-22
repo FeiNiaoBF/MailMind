@@ -79,8 +79,8 @@ backend/
 
 ### 基础端点
 
-- `GET /api/v1/health` - 健康检查
-- `GET /api/v1/error-test` - 错误处理测试
+- `GET /api/health` - 健康检查
+- `GET /api/error-test` - 错误处理测试
 
 ## 开发指南
 

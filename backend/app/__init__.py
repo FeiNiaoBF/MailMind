@@ -19,10 +19,10 @@ def create_app(config_class=BaseConfig):
     config_class.init_app(app)
 
     # 启用CORS
-    CORS(app)
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     # 注册蓝图
-    from .api.base import bp
-    app.register_blueprint(bp, url_prefix='/api')
+    from .api.base import bp as api_bp
+    app.register_blueprint(api_bp, url_prefix=app.config['API_PREFIX'])
 
     return app

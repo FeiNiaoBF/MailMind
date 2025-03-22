@@ -1,3 +1,6 @@
+"""
+基础API蓝图
+"""
 from flask import Blueprint, jsonify
 from ..utils.logger import get_logger
 
@@ -8,7 +11,7 @@ logger = get_logger(__name__)
 
 @bp.route('/')
 def index():
-    """Root endpoint."""
+    """首页端点"""
     return jsonify({
         'message': 'Welcome to MailMind API'
     })
@@ -16,7 +19,7 @@ def index():
 
 @bp.route('/health')
 def health_check():
-    """Health check endpoint."""
+    """健康检查端点"""
     logger.info('Health check requested')
     return jsonify({
         'status': 'healthy',
@@ -60,4 +63,3 @@ def handle_exception(error):
         'error': 'Internal Server Error',
         'message': str(error)
     }), 500
-
