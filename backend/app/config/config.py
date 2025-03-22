@@ -1,34 +1,48 @@
 import os
-from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class BaseConfig:
     """基础配置类"""
 
-    # Flask config
-    SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
-    FLASK_APP = 'run.py'
+    # Flask配置
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key')
+    FLASK_ENV = os.getenv('FLASK_ENV', 'development')
+    DEBUG = FLASK_ENV == 'development'
 
-    # Logging config
-    LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    LOG_LEVEL = 'INFO'
-    LOG_DIR = 'logs'
-    LOG_MAX_BYTES = 10485760  # 10MB
-    LOG_BACKUP_COUNT = 10
+    # 邮箱配置
+    EMAIL_ADDRESS = os.getenv('EMAIL_ADDRESS')
+    EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
+    EMAIL_SERVER = os.getenv('EMAIL_SERVER')
+    EMAIL_PORT = int(os.getenv('EMAIL_PORT', '993'))
 
-    # API config
-    API_PREFIX = '/api'
+    # AI配置
+    AI_API_KEY = os.getenv('AI_API_KEY')
 
-    # JWT config
-    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-jwt-secret-key')
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
-    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
+    # 日志配置
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    LOG_FILE = os.getenv('LOG_FILE', 'logs/app.log')
 
-    # CORS config
-    CORS_ORIGINS = ['*']
+    @classmethod
+    def init_app(cls, app):
+        """初始化应用配置"""
+        # 确保日志目录存在
+        log_dir = os.path.dirname(cls.LOG_FILE)
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
 
-    # Database config (placeholder for future use)
-    DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///app.db')
+        # 验证必要的配置
+        required_vars = [
+            'EMAIL_ADDRESS',
+            'EMAIL_PASSWORD',
+            'EMAIL_SERVER',
+            'AI_API_KEY'
+        ]
+        missing_vars = [var for var in required_vars if not getattr(cls, var)]
+        if missing_vars:
+            raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 
 class DevelopmentConfig(BaseConfig):
