@@ -40,6 +40,9 @@ def _create_handler(log_file: str, max_bytes: int, backup_count: int,
 
 def setup_logger(app):
     """初始化应用主日志系统"""
+    # 清除所有现有的处理程序
+    app.logger.handlers = []
+
     # 获取日志输出模式
     output_mode = app.config.get('LOG_OUTPUT_MODE', 'both').lower()
 
@@ -58,7 +61,8 @@ def setup_logger(app):
     # 创建控制台处理程序
     if output_mode in ['console', 'both']:
         console_handler = logging.StreamHandler()
-        console_handler.setFormatter(logging.Formatter(app.config.get('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(message)s')))
+        console_handler.setFormatter(
+            logging.Formatter(app.config.get('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(message)s')))
         console_handler.setLevel(getattr(logging, app.config.get('LOG_LEVEL', 'INFO').upper()))
         app.logger.addHandler(console_handler)
 
@@ -66,7 +70,7 @@ def setup_logger(app):
     app.logger.setLevel(getattr(logging, app.config.get('LOG_LEVEL', 'INFO').upper()))
 
     # 记录应用启动
-    app.logger.info('Application startup complete')
+    app.logger.info('日志系统初始化完成')
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -76,40 +80,41 @@ def get_logger(name: str) -> logging.Logger:
     """
     logger = logging.getLogger(name)
 
-    if not logger.handlers:
-        # 获取配置
-        if current_app:
-            log_level = current_app.config['LOG_LEVEL'].upper()
-            log_format = current_app.config['LOG_FORMAT']
-            log_file = os.path.join(current_app.config['LOG_DIR'], current_app.config['LOG_FILE'])
-            output_mode = current_app.config.get('LOG_OUTPUT_MODE', 'both').lower()
-        else:
-            log_level = 'INFO'
-            log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            # 使用默认配置
-            log_file = os.path.join('logs', 'app.log')  # 与 .env.example 中的默认值保持一致
-            output_mode = 'both'
+    # 如果已经有处理程序，直接返回
+    if logger.handlers:
+        return logger
 
-        # 创建文件处理程序
-        if output_mode in ['file', 'both']:
-            file_handler = _create_handler(
-                log_file=log_file,
-                max_bytes=10485760,  # 10MB
-                backup_count=5,
-                log_level=log_level,
-                log_format=log_format
-            )
-            logger.addHandler(file_handler)
+    # 获取配置
+    if current_app:
+        log_level = current_app.config['LOG_LEVEL'].upper()
+        log_format = current_app.config['LOG_FORMAT']
+        log_file = os.path.join(current_app.config['LOG_DIR'], current_app.config['LOG_FILE'])
+        output_mode = current_app.config.get('LOG_OUTPUT_MODE', 'both').lower()
+    else:
+        log_level = 'INFO'
+        log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        log_file = os.path.join('logs', 'app.log')
+        output_mode = 'both'
 
-        # 创建控制台处理程序
-        if output_mode in ['console', 'both']:
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(logging.Formatter(log_format))
-            console_handler.setLevel(getattr(logging, log_level))
-            logger.addHandler(console_handler)
+    # 创建文件处理程序
+    if output_mode in ['file', 'both']:
+        file_handler = _create_handler(
+            log_file=log_file,
+            max_bytes=10485760,  # 10MB
+            backup_count=5,
+            log_level=log_level,
+            log_format=log_format
+        )
+        logger.addHandler(file_handler)
 
-        logger.setLevel(getattr(logging, log_level))
+    # 创建控制台处理程序
+    if output_mode in ['console', 'both']:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(logging.Formatter(log_format))
+        console_handler.setLevel(getattr(logging, log_level))
+        logger.addHandler(console_handler)
 
+    logger.setLevel(getattr(logging, log_level))
     return logger
 
 

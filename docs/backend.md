@@ -34,6 +34,32 @@ sequenceDiagram
 
 使用 `SMTP` 协议发送邮件。
 
+学习一下邮箱的操作，额，我是不是不知量力了，好复杂
+
+```mermaid
+sequenceDiagram
+    participant S as 同步服务
+    participant D as 数据库
+    participant M as 邮件服务器
+    S ->> M: 连接IMAP（使用uidvalidity验证）
+    M -->> S: 返回当前邮箱状态
+    S ->> D: 查询最后同步UID（select max(uid) where user_id=?)
+    D -->> S: 返回最后UID=1000
+    S ->> M: 获取UID>1000的邮件
+    M -->> S: 返回新邮件数据
+
+    loop 处理每封邮件
+        S ->> D: 检查唯一约束(user_id+uid)
+        alt 新邮件
+            S ->> D: 插入完整邮件数据
+        else 已存在
+            S ->> D: 更新labels等元数据
+        end
+    end
+
+    S ->> D: 记录同步日志
+```
+
 ### 数据存储模块
 
 使用 SQLite 数据库存储邮件内容。利用 ORM 框架 `SQLAlchemy` 来统一 ORM 模型定义范式.
@@ -42,15 +68,27 @@ sequenceDiagram
 
 ```mermaid
 erDiagram
-    MAIL ||--o{ ANALYSIS: has
+    USER ||--o{ EMAIL: "1:N"
+    USER ||--o{ VERIFICATION_CODE: "1:N"
+    USER ||--o{ TASK_LOG: "1:N"
+    EMAIL ||--o{ ANALYSIS: "1:N"
 
-    MAIL {
-        string uid PK "IMAP UID"
-        string from
-        string to
+    USERS {
+        int id PK
+        string email "邮箱地址-UNIQUE"
+        boolean is_active "是否激活"
+        datetime last_login "最后登录时间"
+        datetime created_at
+    }
+
+    EMAILS {
+        bigint uid PK "IMAP UID"
+        int id FK "对应用户ID"
+        string from "寄件方"
+        string to "发送方"
         string subject
         text body
-        datetime date "发件时间"
+        datetime rece_date "发件时间"
         json attachments "JSON存储附件信息"
         json labels "标签分类"
         datetime created_at "收集时间"
@@ -58,7 +96,7 @@ erDiagram
 
     ANALYSIS {
         int id PK
-        string mail_uid FK
+        bigint email_uid FK
         string analysis_type "summary/keywords/action_items"
         json result "分析结果"
         datetime analyzed_at
@@ -73,14 +111,37 @@ erDiagram
         bool success
         string error_msg
     }
+
+    VERIFICATION_CODE {
+        string email PK
+        string code "6位验证码"
+        datetime expire_time "有效时间"
+        boolean is_used "是否使用"
+    }
 ```
 
 数据库模式应包括三个模型：“**MAIL**”，“**ANALYSIS**”和“**TASK_LOG**”。
+
+大纲流程：
+
+```text
+邮箱服务器 → 定时任务 → EMAIL表 → AI分析 → ANALYSIS表
+```
+
+数据流程：
+
+```text
+用户登录 → 生成验证码 → 验证通过
+触发邮箱同步 → 记录TASK_LOG → 存储EMAIL数据
+发起分析请求 → 创建ANALYSIS记录 → 更新TASK_LOG状态
+```
 
 1. **MAIL**模型应捕获电子邮件元数据，包括发件人、收件人、主题、正文、附件（序列化格式，例如 JSON 或逗号分隔的文件名列表）、标签（序列化格式）和创建时间戳。
 2. **ANALYSIS**模型应存储分析结果，通过外键链接回“MAIL”模型，并包括分析类型（例如情绪分析、主题提取）、分析结果本身（序列化格式）、分析的时间戳和使用的
    AI 模型（例如“GPT”、“DeepSeek”）。
 3. **TASK_LOG**模型应跟踪任务的执行情况，例如获取、分析和发送电子邮件、记录开始和结束时间、成功状态（布尔值）以及任何错误消息（字符串）。
+4. **VERIFICATION_CODE**模型应存储生成的验证码，包括电子邮件地址、验证、过期时间戳和是否使用的标志。
+5. **USER**模型应存储用户信息，包括电子邮件地址、是否激活、最后登录时间和创建时间戳。
 
 ### AI 分析模块
 

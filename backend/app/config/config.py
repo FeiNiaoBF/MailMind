@@ -1,4 +1,6 @@
 import os
+from logging import DEBUG
+
 from dotenv import load_dotenv
 from ..utils.logger import get_logger
 
@@ -12,9 +14,11 @@ logger = get_logger(__name__)
 class BaseConfig:
     """基础配置类"""
     # Flask 配置
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev'
-    # TODO: prefix 需要修改并加入env
     API_PREFIX = '/api'
+    FLASK_APP = os.environ.get('FLASK_APP')
+    FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
+    FLASK_DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() in ['true', 'on', '1']
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev'
 
     # SQLAlchemy 配置
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -47,9 +51,11 @@ class BaseConfig:
     LOG_MAX_BYTES = int(os.environ.get('LOG_MAX_BYTES', '10485760'))
     LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    LOG_OUTPUT_MODE = os.environ.get('LOG_OUTPUT_MODE', 'both').lower()
     logger.info(f"日志配置: 目录={LOG_DIR}, 文件={LOG_FILE}, 级别={LOG_LEVEL}")
 
     logger.info("配置文件加载完成")
+
     @classmethod
     def init_app(cls, app):
         """初始化应用配置"""
@@ -74,23 +80,26 @@ class BaseConfig:
 
 class DevelopmentConfig(BaseConfig):
     """开发环境配置"""
-    DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or 'sqlite:///.dev/mailmind.db'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or 'sqlite:///dev/mailmind.db'
+
+    # 日志
+    LOG_LEVEL = 'DEBUG'
+    LOG_FILE = os.path.join(BaseConfig.LOG_DIR, 'dev.log')
 
 
 class TestingConfig(BaseConfig):
     """测试环境配置"""
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or 'sqlite:///:memory:'
-    WTF_CSRF_ENABLED = False
+    # WTF_CSRF_ENABLED = False
 
     # 测试环境默认值
-    MAIL_USERNAME = 'test@example.com'
-    MAIL_PASSWORD = 'test-password'
-    AI_MODEL_KEY = 'test-api-key'
+    # MAIL_USERNAME = 'test@example.com'
+    # MAIL_PASSWORD = 'test-password'
+    # AI_MODEL_KEY = 'test-api-key'
 
     # 测试环境日志配置
-    LOG_DIR = 'tests/logs'  # 测试日志存储目录
+    LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
     LOG_FILE = os.path.join(LOG_DIR, 'test.log')  # 测试日志文件名
 
     @classmethod
