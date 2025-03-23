@@ -24,7 +24,8 @@ def _create_handler(log_file: str, max_bytes: int, backup_count: int,
     handler = RotatingFileHandler(
         log_file,
         maxBytes=max_bytes,
-        backupCount=backup_count
+        backupCount=backup_count,
+        encoding='utf-8'  # 添加 UTF-8 编码支持
     )
 
     # 设置格式
