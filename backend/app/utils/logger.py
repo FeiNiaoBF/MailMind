@@ -3,59 +3,79 @@ import logging
 from logging.handlers import RotatingFileHandler
 from flask import current_app
 
-def setup_logger(app):
-    """Configure logging for the application."""
 
-    # Create logs directory if it doesn't exist
-    log_dir = app.config['LOG_DIR']
+def _create_handler(log_file: str, max_bytes: int, backup_count: int,
+                    log_level: str, log_format: str) -> RotatingFileHandler:
+    """创建日志处理程序
+    :param log_file: 日志文件路径
+    :param max_bytes: 日志文件大小
+    :param backup_count: 日志备份数量
+    :param log_level: 日志级别
+    :param log_format: 日志格式
+    :return: RotatingFileHandler
+    """
+    # 确保日志目录存在
+    log_dir = os.path.dirname(str(log_file))
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    # Set up file handler
-    log_file = os.path.join(log_dir, 'app.log')
-    file_handler = RotatingFileHandler(
+    # 创建处理程序
+    handler = RotatingFileHandler(
         log_file,
-        maxBytes=app.config['LOG_MAX_BYTES'],
-        backupCount=app.config['LOG_BACKUP_COUNT']
+        maxBytes=max_bytes,
+        backupCount=backup_count
     )
 
-    # Set log format
-    formatter = logging.Formatter(app.config['LOG_FORMAT'])
-    file_handler.setFormatter(formatter)
+    # 设置格式
+    formatter = logging.Formatter(log_format)
+    handler.setFormatter(formatter)
 
-    # Set log level
-    log_level = getattr(logging, app.config['LOG_LEVEL'].upper())
-    file_handler.setLevel(log_level)
+    # 设置日志级别
+    handler.setLevel(getattr(logging, log_level.upper()))
 
-    # Add handlers to app logger
+    return handler
+
+
+def setup_logger(app):
+    """初始化应用主日志系统"""
+    # 创建文件处理程序
+    log_file = os.path.join(app.config['LOG_DIR'], app.config['LOG_FILE'])
+    file_handler = _create_handler(
+        log_file=log_file,
+        max_bytes=app.config['LOG_MAX_BYTES'],
+        backup_count=app.config['LOG_BACKUP_COUNT'],
+        log_level=app.config['LOG_LEVEL'],
+        log_format=app.config['LOG_FORMAT']
+    )
+    # 添加到应用日志器
     app.logger.addHandler(file_handler)
-    app.logger.setLevel(log_level)
-
-    # Log application startup
+    app.logger.setLevel(getattr(logging, app.config['LOG_LEVEL'].upper()))
+    # 记录应用启动
     app.logger.info('Application startup complete')
 
-def get_logger(name):
-    """Get a logger instance for the given name."""
+
+def get_logger(name: str) -> logging.Logger:
+    """获取指定名称的日志记录器
+    :param name: 日志记录器名称
+    :return: 日志记录器
+    """
     logger = logging.getLogger(name)
 
     if not logger.handlers:
-        # If running in Flask context, use app config
+        # 获取配置
         if current_app:
-            log_level = getattr(logging, current_app.config['LOG_LEVEL'].upper())
-            formatter = logging.Formatter(current_app.config['LOG_FORMAT'])
+            log_level = current_app.config['LOG_LEVEL'].upper()
+            log_format = current_app.config['LOG_FORMAT']
         else:
-            # Default config for when running outside Flask context
-            log_level = logging.INFO
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
+            log_level = 'INFO'
+            log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
-        # Create console handler
+        # 创建控制台处理程序
         console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        console_handler.setLevel(log_level)
+        console_handler.setFormatter(logging.Formatter(log_format))
+        console_handler.setLevel(getattr(logging, log_level))
 
         logger.addHandler(console_handler)
-        logger.setLevel(log_level)
+        logger.setLevel(getattr(logging, log_level))
 
     return logger

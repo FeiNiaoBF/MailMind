@@ -8,7 +8,8 @@ load_dotenv()
 class BaseConfig:
     """基础配置类"""
     # Flask 配置
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'hard-to-guess-string'
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev'
+    # TODO: prefix 需要修改并加入env
     API_PREFIX = '/api'
 
     # SQLAlchemy 配置
@@ -35,32 +36,36 @@ class BaseConfig:
     SCHEDULER_API_ENABLED = True
 
     # 日志配置
-    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
-    LOG_FILE = os.environ.get('LOG_FILE', 'logs/app.log')
+    LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')  # 日志存储目录
+    LOG_FILE = os.environ.get('LOG_FILE', 'app.log')  # 日志文件名
+    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')  # 日志级别
+    # 10MB = 10 * 1024 * 1024
+    LOG_MAX_BYTES = int(os.environ.get('LOG_MAX_BYTES', '10485760'))  # 日志文件大小
+    LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))  # 日志备份数量
+    LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'  # 日志格式
 
     @classmethod
     def init_app(cls, app):
         """初始化应用配置"""
         # 确保日志目录存在
-        log_dir = os.path.dirname(cls.LOG_FILE)
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+        if not os.path.exists(cls.LOG_DIR):
+            os.makedirs(cls.LOG_DIR)
 
         # 验证必要的配置
-        required_vars = [
-            'MAIL_USERNAME',
-            'MAIL_PASSWORD',
-            'AI_MODEL_KEY'
-        ]
-        missing_vars = [var for var in required_vars if not getattr(cls, var)]
-        if missing_vars:
-            raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+        # required_vars = [
+        #     'MAIL_USERNAME',
+        #     'MAIL_PASSWORD',
+        #     'AI_MODEL_KEY'
+        # ]
+        # missing_vars = [var for var in required_vars if not getattr(cls, var)]
+        # if missing_vars:
+        #     raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 
 class DevelopmentConfig(BaseConfig):
     """开发环境配置"""
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or 'sqlite:///mailmind-dev.db'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or 'sqlite:///.dev/mailmind.db'
 
 
 class TestingConfig(BaseConfig):
@@ -74,24 +79,32 @@ class TestingConfig(BaseConfig):
     MAIL_PASSWORD = 'test-password'
     AI_MODEL_KEY = 'test-api-key'
 
+    # 测试环境日志配置
+    LOG_DIR = 'tests/logs'  # 测试日志存储目录
+    LOG_FILE = os.path.join(LOG_DIR, 'test.log')  # 测试日志文件名
+
     @classmethod
     def init_app(cls, app):
         """测试环境特定的初始化"""
         # 确保日志目录存在
-        log_dir = os.path.dirname(cls.LOG_FILE)
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+        if not os.path.exists(cls.LOG_DIR):
+            os.makedirs(cls.LOG_DIR)
         # 测试环境不需要验证配置
         pass
 
 
 class ProductionConfig(BaseConfig):
     """生产环境配置"""
+
     @classmethod
     def init_app(cls, app):
         """生产环境特定的初始化"""
         BaseConfig.init_app(app)
 
+        # 数据库配置
+        if not app.config['SQLALCHEMY_DATABASE_URI']:
+            raise ValueError('SQLALCHEMY_DATABASE_URI is not set')
+        os.getenv('DATABASE_URL')
         # 日志配置
         import logging
         from logging.handlers import RotatingFileHandler

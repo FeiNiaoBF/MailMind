@@ -4,19 +4,28 @@
 from flask import Flask
 from flask_cors import CORS
 
-from .config.config import BaseConfig
+from .config.config import config
+from .utils.logger import setup_logger
+from .db.database import db
 
 
-def create_app(config_class=BaseConfig):
+def create_app(config_name='default') -> Flask:
     """创建Flask应用
-    :param config_class: 配置类
+    :param config_name: 配置名称
     :return: Flask应用
     """
     app = Flask(__name__)
 
     # 加载配置
-    app.config.from_object(config_class)
-    config_class.init_app(app)
+    cfg = config[config_name]
+    app.config.from_object(cfg)
+    cfg.init_app(app)
+
+    # 初始化日志系统
+    setup_logger(app)
+
+    # 初始化数据库
+    db.init_app(app)
 
     # 启用CORS
     CORS(app, resources={r"/api/*": {"origins": "*"}})

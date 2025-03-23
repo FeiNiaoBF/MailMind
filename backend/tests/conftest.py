@@ -3,13 +3,14 @@
 """
 import pytest
 from app import create_app
-from app.config.config import TestingConfig
+
 
 @pytest.fixture
 def app():
     """创建测试应用实例"""
-    app = create_app(TestingConfig)
+    app = create_app('testing')
     return app
+
 
 @pytest.fixture
 def client(app):

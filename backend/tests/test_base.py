@@ -9,7 +9,7 @@ from app.config.config import TestingConfig
 @pytest.fixture
 def app():
     """Create application for the tests."""
-    app = create_app(config_class=TestingConfig)
+    app = create_app(config_name='testing')
     app.config.update({
         "TESTING": True,
     })
