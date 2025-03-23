@@ -1,8 +1,12 @@
 import os
 from dotenv import load_dotenv
+from ..utils.logger import get_logger
 
 # 加载环境变量
 load_dotenv()
+
+# 创建配置文件的日志器
+logger = get_logger(__name__)
 
 
 class BaseConfig:
@@ -15,6 +19,7 @@ class BaseConfig:
     # SQLAlchemy 配置
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///mailmind.db'
+    logger.info(f"数据库URI: {SQLALCHEMY_DATABASE_URI}")
 
     # 邮件服务器配置
     MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
@@ -36,20 +41,23 @@ class BaseConfig:
     SCHEDULER_API_ENABLED = True
 
     # 日志配置
-    LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')  # 日志存储目录
-    LOG_FILE = os.environ.get('LOG_FILE', 'app.log')  # 日志文件名
-    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')  # 日志级别
-    # 10MB = 10 * 1024 * 1024
-    LOG_MAX_BYTES = int(os.environ.get('LOG_MAX_BYTES', '10485760'))  # 日志文件大小
-    LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))  # 日志备份数量
-    LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'  # 日志格式
+    LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+    LOG_FILE = os.environ.get('LOG_FILE', 'app.log')
+    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
+    LOG_MAX_BYTES = int(os.environ.get('LOG_MAX_BYTES', '10485760'))
+    LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
+    LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logger.info(f"日志配置: 目录={LOG_DIR}, 文件={LOG_FILE}, 级别={LOG_LEVEL}")
 
+    logger.info("配置文件加载完成")
     @classmethod
     def init_app(cls, app):
         """初始化应用配置"""
+        logger.info("开始初始化应用配置")
         # 确保日志目录存在
         if not os.path.exists(cls.LOG_DIR):
             os.makedirs(cls.LOG_DIR)
+            logger.info(f"创建日志目录: {cls.LOG_DIR}")
 
         # 验证必要的配置
         # required_vars = [
@@ -60,6 +68,8 @@ class BaseConfig:
         # missing_vars = [var for var in required_vars if not getattr(cls, var)]
         # if missing_vars:
         #     raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
+        logger.info("应用配置初始化完成")
 
 
 class DevelopmentConfig(BaseConfig):
