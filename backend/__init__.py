@@ -1,0 +1,3 @@
+"""
+MailMind backend package
+"""

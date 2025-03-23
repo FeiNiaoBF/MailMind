@@ -2,14 +2,14 @@
 Basic tests for the Flask application.
 """
 import pytest
-from app import create_app
-from app.config.config import TestingConfig
+from ..app import create_app
+from ..app.config.config import config
 
 
 @pytest.fixture
 def app():
     """Create application for the tests."""
-    app = create_app(config_name='testing')
+    app = create_app('testing')
     app.config.update({
         "TESTING": True,
     })

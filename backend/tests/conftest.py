@@ -4,9 +4,11 @@
 import os
 import pytest
 from backend.app import create_app, db
-from backend.app.config.config import config
 from backend.app.db.database import init_db
-from backend.app.utils.logger import debug_print
+from backend.app.utils.random import random_email
+
+# 设置测试环境
+os.environ['FLASK_ENV'] = 'testing'
 
 BASE_TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -40,3 +42,17 @@ def client(app):
 def runner(app):
     """创建测试运行器"""
     return app.test_cli_runner()
+
+
+# 邮件模块
+@pytest.fixture
+def email_auth_service():
+    """创建邮箱认证服务实例"""
+    return EmailAuthService()
+
+
+@pytest.fixture
+def test_email():
+    """测试邮箱"""
+    em = random_email()
+    return em

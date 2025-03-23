@@ -48,7 +48,7 @@ def setup_logger(app):
 
     # 创建文件处理程序
     if output_mode in ['file', 'both']:
-        log_file = os.path.join(app.config.get('LOG_DIR', 'logs'), app.config.get('LOG_FILE', 'app.log'))
+        log_file = app.config.get('LOG_FILE', os.path.join(app.config.get('LOG_DIR', 'logs'), 'app.log'))
         file_handler = _create_handler(
             log_file=log_file,
             max_bytes=app.config.get('LOG_MAX_BYTES', 5242880),
@@ -88,12 +88,23 @@ def get_logger(name: str) -> logging.Logger:
     if current_app:
         log_level = current_app.config['LOG_LEVEL'].upper()
         log_format = current_app.config['LOG_FORMAT']
-        log_file = os.path.join(current_app.config['LOG_DIR'], current_app.config['LOG_FILE'])
+        log_file = current_app.config['LOG_FILE']
         output_mode = current_app.config.get('LOG_OUTPUT_MODE', 'both').lower()
     else:
+        # 如果没有 current_app 上下文，根据环境变量决定日志文件
         log_level = 'INFO'
         log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        log_file = os.path.join('logs', 'app.log')
+        env = os.environ.get('FLASK_ENV', 'development')
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+
+        # 根据环境选择日志文件
+        if env == 'testing':
+            log_file = os.path.join(log_dir, 'test.log')
+        elif env == 'development':
+            log_file = os.path.join(log_dir, 'dev.log')
+        else:
+            log_file = os.path.join(log_dir, 'app.log')
+
         output_mode = 'both'
 
     # 创建文件处理程序

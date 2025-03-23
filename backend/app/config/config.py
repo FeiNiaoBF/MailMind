@@ -46,12 +46,12 @@ class BaseConfig:
 
     # 日志配置
     LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
-    LOG_FILE = os.environ.get('LOG_FILE', 'app.log')
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
     LOG_MAX_BYTES = int(os.environ.get('LOG_MAX_BYTES', '10485760'))
     LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOG_OUTPUT_MODE = os.environ.get('LOG_OUTPUT_MODE', 'both').lower()
+    LOG_FILE = os.path.join(LOG_DIR, 'app.log')  # 默认日志文件
     logger.info(f"日志配置: 目录={LOG_DIR}, 文件={LOG_FILE}, 级别={LOG_LEVEL}")
 
     logger.info("配置文件加载完成")
@@ -81,8 +81,6 @@ class BaseConfig:
 class DevelopmentConfig(BaseConfig):
     """开发环境配置"""
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or 'sqlite:///dev/mailmind.db'
-
-    # 日志
     LOG_LEVEL = 'DEBUG'
     LOG_FILE = os.path.join(BaseConfig.LOG_DIR, 'dev.log')
 
@@ -91,16 +89,8 @@ class TestingConfig(BaseConfig):
     """测试环境配置"""
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or 'sqlite:///:memory:'
-    # WTF_CSRF_ENABLED = False
-
-    # 测试环境默认值
-    # MAIL_USERNAME = 'test@example.com'
-    # MAIL_PASSWORD = 'test-password'
-    # AI_MODEL_KEY = 'test-api-key'
-
-    # 测试环境日志配置
-    LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
-    LOG_FILE = os.path.join(LOG_DIR, 'test.log')  # 测试日志文件名
+    LOG_LEVEL = 'DEBUG'
+    LOG_FILE = os.path.join(BaseConfig.LOG_DIR, 'test.log')
 
     @classmethod
     def init_app(cls, app):
