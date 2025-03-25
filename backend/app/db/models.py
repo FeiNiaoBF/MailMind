@@ -21,12 +21,26 @@ class User(BaseDB):
 
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False, comment='用户邮箱')
-    is_active = db.Column(db.Boolean, default=True)
-    last_login = db.Column(db.DateTime)
+    is_active = db.Column(db.Boolean, default=True, comment='用户是否激活')
+    last_login = db.Column(db.DateTime, comment='最后登录时间')
+    oauth_provider = db.Column(db.String(20), comment='OAuth提供商(gmail/mailtrap)')
+    oauth_uid = db.Column(db.String(255), comment='第三方唯一ID')
+    oauth_token = db.Column(db.JSON, comment='OAuth令牌信息，包含access_token、refresh_token等')
+    oauth_token_expires_at = db.Column(db.DateTime, comment='OAuth访问令牌过期时间')
 
     # 关联关系
     emails = db.relationship('Email', backref='user', lazy=True)
     tasks = db.relationship('Task', backref='user', lazy=True)
+
+    def update_oauth_token(self, token: dict) -> None:
+        """
+        更新OAuth令牌
+
+        Args:
+            token (dict): 新的令牌信息
+        """
+        self.oauth_token = token
+        self.last_login = datetime.now(UTC)
 
 
 class Email(BaseDB):
@@ -94,13 +108,3 @@ class Task(BaseDB):
     started_at = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
     model_used = db.Column(db.String(50), nullable=False)
-
-
-class VerificationCode(BaseDB):
-    """验证码模型"""
-    __tablename__ = 'verification_codes'
-
-    email = db.Column(db.String(255), primary_key=True)
-    code = db.Column(db.String(6), nullable=False)
-    expire_time = db.Column(db.DateTime, nullable=False)
-    is_used = db.Column(db.Boolean, default=False)

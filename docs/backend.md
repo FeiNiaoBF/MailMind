@@ -26,26 +26,36 @@ sequenceDiagram
 
 登录我打算使用验证码登录，因为密码登录的话，需要存储密码，这样不安全。
 
-流程
+不对，使用验证码有点麻烦，我打算使用Gmail API登录，然后使用 `OAuth2` 来授权，这样更好点（可能。
+
+| 组件   | 技术方案                  | 特性优势                                   |
+|------|-----------------------|----------------------------------------|
+| 协议支持 | IMAP/SMTP + Gmail API | 双协议支持                                  |
+| 认证方式 | OAuth2.0 + Token      | 生产环境使用Gmail OAuth，测试环境使用Mailtrap Token |
+| 任务调度 | APScheduler           | 支持Cron式调度，动态任务管理                       ||
+| 配置管理 | 环境变量 + Config类        | 实现开发/生产环境零修改切换                         |
+
+流程：
 
 ```mermaid
 sequenceDiagram
     participant 用户
     participant 系统
     用户 ->> 系统: 输入邮箱地址
-    系统 ->> 系统: 生成随机验证码
-    系统 ->> 系统: 发送验证码到邮箱
-    用户 ->> 系统: 输入验证码
-    系统 ->> 系统: 验证验证码
-    系统 ->> 系统: 创建用户会话
+    系统 ->> 系统: 指向Gmail登录页面
+    系统 ->> 系统: 用户登录Gmail并授权
+    系统 ->> 系统: 返回授权码
 ```
 
 1. 用户输入邮箱地址
-2. 系统生成一个随机验证码（通常是4-6位数字）
-3. 系统通过SMTP将验证码发送到用户邮箱
-4. 用户从邮箱获取验证码并输入
-5. 系统验证用户输入的验证码是否正确且未过期
-6. 验证成功后，系统创建用户会话或JWT令牌
+2. 指向Gmail登录页面
+3. 用户登录Gmail并授权
+4. 返回授权码
+5. 使用授权码获取 `access_token` 和 `refresh_token`
+6. 使用 `access_token` 登录邮箱
+7. 获取邮件内容
+8. AI分析内容
+9. 发送邮件
 
 #### 邮箱采集模块
 
@@ -100,6 +110,9 @@ erDiagram
         boolean is_active "是否激活"
         datetime last_login "最后登录时间"
         datetime created_at
+        string oauth_uid "OAuth UID"
+        json oauth_token "OAuth Token"
+        string oauth_provider "OAuth Provider"
     }
 
     EMAILS {
@@ -132,13 +145,6 @@ erDiagram
         bool success
         string error_msg
     }
-
-    VERIFICATION_CODE {
-        string email PK
-        string code "6位验证码"
-        datetime expire_time "有效时间"
-        boolean is_used "是否使用"
-    }
 ```
 
 数据库模式应包括三个模型：“**MAIL**”，“**ANALYSIS**”和“**TASK_LOG**”。
@@ -161,8 +167,7 @@ erDiagram
 2. **ANALYSIS**模型应存储分析结果，通过外键链接回“MAIL”模型，并包括分析类型（例如情绪分析、主题提取）、分析结果本身（序列化格式）、分析的时间戳和使用的
    AI 模型（例如“GPT”、“DeepSeek”）。
 3. **TASK_LOG**模型应跟踪任务的执行情况，例如获取、分析和发送电子邮件、记录开始和结束时间、成功状态（布尔值）以及任何错误消息（字符串）。
-4. **VERIFICATION_CODE**模型应存储生成的验证码，包括电子邮件地址、验证、过期时间戳和是否使用的标志。
-5. **USER**模型应存储用户信息，包括电子邮件地址、是否激活、最后登录时间和创建时间戳。
+4. **USER**模型应存储用户信息，包括电子邮件地址、是否激活、最后登录时间和创建时间戳。
 
 ### AI 分析模块
 
