@@ -3,9 +3,10 @@
 """
 import os
 import pytest
+import shutil
 from datetime import datetime, UTC
-from flask import Flask
-from flask_jwt_extended import JWTManager
+from flask import Flask, current_app
+from flask_jwt_extended import JWTManager, create_access_token
 from backend.app.config.config import TestingConfig
 from backend.app.db.database import db, init_db
 from backend.app.db.models import User, Email, Analysis, Task
@@ -13,30 +14,21 @@ from backend.app.service.email.auth import EmailAuthService
 from backend.app.service.email.sync import EmailSyncService
 from backend.app.service.email.analysis import EmailAnalysisService
 from backend.app.api.auth import auth_bp
+from backend.app import create_app
+from unittest.mock import patch, Mock
 
 # 设置测试环境
 os.environ['FLASK_ENV'] = 'testing'
-
-BASE_TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 @pytest.fixture(scope='session')
 def app():
     """创建测试应用实例"""
-    # 创建应用实例
-    app = Flask(__name__)
-    app.config.from_object(TestingConfig)
-    app.config['SECRET_KEY'] = 'test_secret_key'
-    app.config['JWT_SECRET_KEY'] = 'test_jwt_secret_key'
+    app = create_app('testing')
 
-    # 初始化JWT
-    JWTManager(app)
-
-    # 初始化数据库
-    init_db(app)
-
-    # 注册蓝图
-    app.register_blueprint(auth_bp)
+    # 创建应用上下文
+    with app.app_context():
+        db.create_all()
 
     yield app
 
@@ -70,6 +62,13 @@ def db_session(app):
         session.remove()
 
 
+@pytest.fixture(scope='function')
+def auth_headers(test_user):
+    """创建认证头"""
+    access_token = create_access_token(identity=test_user.id)
+    return {'Authorization': f'Bearer {access_token}'}
+
+
 # 邮件模块
 @pytest.fixture(scope='function')
 def gmail_auth_service():
@@ -93,14 +92,14 @@ def email_analysis_service():
 def test_user(db_session):
     """创建测试用户"""
     user = User(
-        email='test@example.com',
-        oauth_uid='test_uid',
+        email=current_app.config['TEST_USER_EMAIL'],
+        oauth_uid=current_app.config['TEST_USER_OAUTH_UID'],
         oauth_token={
             'access_token': 'test_access_token',
             'refresh_token': 'test_refresh_token',
             'expires_at': datetime.now(UTC).isoformat()
         },
-        oauth_provider='gmail',
+        oauth_provider=current_app.config['TEST_USER_OAUTH_PROVIDER'],
         is_active=True,
         oauth_token_expires_at=datetime.now(UTC)
     )
@@ -161,3 +160,24 @@ def test_task(db_session, test_user, test_email):
     db_session.add(task)
     db_session.commit()
     return task
+
+
+@pytest.fixture(scope='function')
+def mock_gmail_api():
+    """模拟Gmail API"""
+    with patch('googleapiclient.discovery.build') as mock_build:
+        mock_service = Mock()
+        mock_build.return_value = mock_service
+        yield mock_service
+
+
+@pytest.fixture(scope='function')
+def mock_ai_service():
+    """模拟AI服务"""
+    with patch('backend.app.service.email.analysis.EmailAnalysisService.analyze_email') as mock_analyze:
+        mock_analyze.return_value = {
+            'summary': 'Test summary',
+            'keywords': ['test', 'email'],
+            'sentiment': 'positive'
+        }
+        yield mock_analyze

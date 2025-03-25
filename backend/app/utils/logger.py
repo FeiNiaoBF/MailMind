@@ -33,7 +33,12 @@ def _create_handler(log_file: str, max_bytes: int, backup_count: int,
     handler.setFormatter(formatter)
 
     # 设置日志级别
-    handler.setLevel(getattr(logging, log_level.upper()))
+    if isinstance(log_level, str):
+        handler.setLevel(getattr(logging, log_level.upper()))
+    elif isinstance(log_level, bool):
+        handler.setLevel(logging.DEBUG if log_level else logging.INFO)
+    else:
+        handler.setLevel(logging.INFO)
 
     return handler
 
@@ -43,12 +48,15 @@ def setup_logger(app):
     # 清除所有现有的处理程序
     app.logger.handlers = []
 
+    # 设置日志记录器不传播到父记录器
+    app.logger.propagate = False
+
     # 获取日志输出模式
-    output_mode = app.config.get('LOG_OUTPUT_MODE', 'both').lower()
+    output_mode = app.config['LOG_OUTPUT_MODE']
 
     # 创建文件处理程序
     if output_mode in ['file', 'both']:
-        log_file = app.config.get('LOG_FILE', os.path.join(app.config.get('LOG_DIR', 'logs'), 'app.log'))
+        log_file = os.path.join(app.config['LOG_DIR'], app.config['LOG_FILE'])
         file_handler = _create_handler(
             log_file=log_file,
             max_bytes=app.config.get('LOG_MAX_BYTES', 5242880),
@@ -84,27 +92,20 @@ def get_logger(name: str) -> logging.Logger:
     if logger.handlers:
         return logger
 
+    # 设置日志记录器不传播到父记录器
+    logger.propagate = False
+
     # 获取配置
     if current_app:
         log_level = current_app.config['LOG_LEVEL'].upper()
         log_format = current_app.config['LOG_FORMAT']
-        log_file = current_app.config['LOG_FILE']
+        log_file = os.path.join(current_app.config['LOG_DIR'], current_app.config['LOG_FILE'])
         output_mode = current_app.config.get('LOG_OUTPUT_MODE', 'both').lower()
     else:
-        # 如果没有 current_app 上下文，根据环境变量决定日志文件
+        # 如果没有 current_app 上下文，使用默认配置
         log_level = 'INFO'
         log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        env = os.environ.get('FLASK_ENV', 'development')
-        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
-
-        # 根据环境选择日志文件
-        if env == 'testing':
-            log_file = os.path.join(log_dir, 'test.log')
-        elif env == 'development':
-            log_file = os.path.join(log_dir, 'dev.log')
-        else:
-            log_file = os.path.join(log_dir, 'app.log')
-
+        log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'app.log')
         output_mode = 'both'
 
     # 创建文件处理程序

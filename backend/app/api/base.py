@@ -8,7 +8,6 @@ from ..utils.logger import get_logger, debug_print
 bp = Blueprint('base', __name__)
 logger = get_logger(__name__)
 
-
 @bp.route('/')
 def index():
     """首页端点"""
@@ -67,6 +66,12 @@ def internal_error(error):
     return jsonify({
         'error': 'Internal Server Error',
         'message': 'An unexpected error occurred'
+
+
+
+
+
+
     }), 500
 
 

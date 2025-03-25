@@ -2,7 +2,6 @@
 配置文件
 """
 import os
-from logging import DEBUG
 from datetime import timedelta
 
 from dotenv import load_dotenv
@@ -21,6 +20,9 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev')
     DEBUG = False
     TESTING = False
+
+    # API配置
+    API_PREFIX = '/api/v1'  # API路由前缀
 
     # 数据库配置
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///instance/mailmind.db')
@@ -67,8 +69,8 @@ class Config:
 
     # 日志配置
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-    LOG_DIR = os.getenv('LOG_DIR', 'logs')
-    LOG_FILE = os.getenv('LOG_FILE', 'app.log')
+    LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+    LOG_FILE = 'app.log'
     LOG_FORMAT = os.getenv('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     LOG_MAX_BYTES = int(os.getenv('LOG_MAX_BYTES', 5242880))
     LOG_BACKUP_COUNT = int(os.getenv('LOG_BACKUP_COUNT', 5))
@@ -77,39 +79,87 @@ class Config:
     # 默认发件人邮箱
     DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@mailmind.com")
 
+    @staticmethod
+    def init_app(app):
+        """初始化应用配置
+        :param app: Flask应用实例
+        """
+        # 确保日志目录存在
+        log_dir = os.path.join(app.root_path, app.config['LOG_DIR'])
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+
 
 class DevelopmentConfig(Config):
     """开发环境配置"""
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///instance/dev.db'
-    EMAIL_PROVIDER = 'mailtrap'
+    LOG_FILE = 'dev.log'
 
 
 class TestingConfig(Config):
     """测试环境配置"""
     TESTING = True
     DEBUG = True
+
+    # API配置
+    API_PREFIX = '/api/v1'  # API路由前缀
+
+    # 数据库配置
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # 使用内存数据库
-    EMAIL_PROVIDER = 'mailtrap'
+    SQLALCHEMY_ECHO = True  # 显示SQL语句
+
+    # # 邮件配置
+    # EMAIL_PROVIDER = 'mailtrap'
+    # MAIL_SERVER = 'sandbox.smtp.mailtrap.io'
+    # MAIL_PORT = 2525
+    # MAIL_USERNAME = 'test_user'
+    # MAIL_PASSWORD = 'test_password'
+    # MAIL_USE_TLS = True
+    # MAIL_USE_SSL = False
+    # MAIL_DEFAULT_SENDER = 'test@mailtrap.io'
 
     # 测试用 Gmail API 配置
-    GMAIL_CLIENT_ID = 'test_client_id'
-    GMAIL_CLIENT_SECRET = 'test_client_secret'
-    GMAIL_REDIRECT_URI = 'http://localhost:5000/api/auth/gmail/callback'
+    GMAIL_CLIENT_CONFIG = {
+        "web": {
+            "client_id": "test_client_id",
+            "project_id": "test_project_id",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_secret": "test_client_secret",
+            "redirect_uris": ["http://localhost:5000/api/auth/gmail/callback"]
+        }
+    }
 
-    # 测试用 JWT 配置
+    # JWT配置
     JWT_SECRET_KEY = 'test_jwt_secret'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
+    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=1)
 
-    # 测试用 AI 配置
+    # AI配置
     AI_MODEL_TYPE = 'test_model'
     AI_MODEL_KEY = 'test_key'
+
+    # 日志配置
+    LOG_LEVEL = 'DEBUG'
+    LOG_FILE = 'test.log'
+    LOG_MAX_BYTES = 1024 * 1024  # 1MB
+    LOG_BACKUP_COUNT = 3
+    LOG_OUTPUT_MODE = 'both'
+
+    # 测试特定配置
+    TEST_USER_EMAIL = 'test@example.com'
+    TEST_USER_PASSWORD = 'test_password'
+    TEST_USER_OAUTH_UID = 'test_uid'
+    TEST_USER_OAUTH_PROVIDER = 'gmail'
 
 
 class ProductionConfig(Config):
     """生产环境配置"""
     DEBUG = False
     EMAIL_PROVIDER = 'gmail'
+    LOG_FILE = 'prod.log'
 
     # 生产环境特定配置
     SQLALCHEMY_DATABASE_URI = os.getenv('PROD_DATABASE_URL')

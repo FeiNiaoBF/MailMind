@@ -7,6 +7,7 @@ from flask_cors import CORS
 from .config.config import config
 from .utils.logger import setup_logger
 from .db.database import db
+from .api.base import bp as base_bp
 
 
 def create_app(config_name='default') -> Flask:
@@ -31,7 +32,6 @@ def create_app(config_name='default') -> Flask:
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     # 注册蓝图
-    from .api.base import bp as api_bp
-    app.register_blueprint(api_bp, url_prefix=app.config['API_PREFIX'])
+    app.register_blueprint(base_bp, url_prefix=app.config['API_PREFIX'])
 
     return app
