@@ -91,6 +91,15 @@ def email_analysis_service():
 @pytest.fixture(scope='function')
 def test_user(db_session):
     """创建测试用户"""
+    # 清理已存在的测试用户
+    existing_user = db_session.query(User).filter_by(
+        email=current_app.config['TEST_USER_EMAIL']
+    ).first()
+    if existing_user:
+        db_session.delete(existing_user)
+        db_session.commit()
+
+    # 创建新的测试用户
     user = User(
         email=current_app.config['TEST_USER_EMAIL'],
         oauth_uid=current_app.config['TEST_USER_OAUTH_UID'],
