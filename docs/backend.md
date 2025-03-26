@@ -35,17 +35,38 @@ sequenceDiagram
 | 任务调度 | APScheduler           | 支持Cron式调度，动态任务管理                       ||
 | 配置管理 | 环境变量 + Config类        | 实现开发/生产环境零修改切换                         |
 
-流程：
+
+[OAuth2.0](https://developers.google.com/identity/protocols/oauth2)
 
 ```mermaid
 sequenceDiagram
-    participant 用户
-    participant 系统
-    用户 ->> 系统: 输入邮箱地址
-    系统 ->> 系统: 指向Gmail登录页面
-    系统 ->> 系统: 用户登录Gmail并授权
-    系统 ->> 系统: 返回授权码
+    participant User
+    participant APP
+    participant Gmail Auth
+    participant Gmail Resource
+    User ->> APP: 点击登录
+    APP ->> Gmail Auth: Authorize Service
+    Gmail Auth ->> User: 显出登录页面
+    User ->> Gmail Auth: 请求授权
+    Gmail Auth ->> APP: 返回授权码`authorization_url`
+    APP ->> Gmail Auth: 通过授权码获取令牌`fetch_token`
+    Gmail Auth ->> APP: 返回令牌
+    APP ->> Gmail Resource: 使用令牌访问资源
+    Gmail Resource ->> APP: 返回资源
+    APP ->> Gmail Auth: 刷新令牌`refresh_token`
+    Gmail Auth ->> APP: 返回新令牌
 ```
+
+#### 完整令牌处理流程
+
+1. 初始授权请求 → 生成 `authorization_url`
+   2 .接收回调 → 通过 `fetch_token` 获取令牌
+2. 自动刷新 → 当访问令牌过期时自动获取新令牌
+3. 安全存储 → 将刷新令牌持久化存储
+
+[Gmail Auth](https://developers.google.com/identity/protocols/oauth2/scopes?hl=zh-cn#gmail)
+
+[Gmail API](https://developers.google.com/workspace/gmail/api/reference/rest?apix=true&hl=zh-cn)
 
 1. 用户输入邮箱地址
 2. 指向Gmail登录页面
