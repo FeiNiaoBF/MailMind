@@ -8,6 +8,7 @@
 """
 from typing import List, Dict, Any, Optional
 from datetime import datetime, UTC
+import base64
 
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -85,14 +86,60 @@ class EmailSyncService:
                     # 解析邮件内容
                     body = ''
                     html_body = ''
+
+                    def process_part(part: dict) -> None:
+                        """递归处理邮件部分
+
+                        Args:
+                            part: 邮件部分对象
+                        """
+                        nonlocal body, html_body
+
+                        # 处理当前部分
+                        if part.get('mimeType') == 'text/plain':
+                            if 'data' in part.get('body', {}):
+                                try:
+                                    # 添加base64填充
+                                    data = part['body']['data']
+                                    padding = 4 - (len(data) % 4)
+                                    if padding != 4:
+                                        data += '=' * padding
+                                    body = base64.urlsafe_b64decode(data).decode('utf-8')
+                                except Exception as e:
+                                    logger.error(f"Error decoding plain text: {str(e)}")
+                                    body = ''
+                        elif part.get('mimeType') == 'text/html':
+                            if 'data' in part.get('body', {}):
+                                try:
+                                    # 添加base64填充
+                                    data = part['body']['data']
+                                    padding = 4 - (len(data) % 4)
+                                    if padding != 4:
+                                        data += '=' * padding
+                                    html_body = base64.urlsafe_b64decode(data).decode('utf-8')
+                                except Exception as e:
+                                    logger.error(f"Error decoding HTML: {str(e)}")
+                                    html_body = ''
+                        elif part.get('mimeType', '').startswith('multipart/'):
+                            # 递归处理多部分邮件
+                            for subpart in part.get('parts', []):
+                                process_part(subpart)
+
+                    # 处理邮件内容
                     if 'parts' in payload:
                         for part in payload['parts']:
-                            if part.get('mimeType') == 'text/plain':
-                                body = part.get('body', {}).get('data', '')
-                            elif part.get('mimeType') == 'text/html':
-                                html_body = part.get('body', {}).get('data', '')
-                    elif 'body' in payload:
-                        body = payload.get('body', {}).get('data', '')
+                            process_part(part)
+                    elif 'body' in payload and 'data' in payload['body']:
+                        try:
+                            # 添加base64填充
+                            data = payload['body']['data']
+                            padding = 4 - (len(data) % 4)
+                            if padding != 4:
+                                data += '=' * padding
+                            body = base64.urlsafe_b64decode(data).decode('utf-8')
+                        except Exception as e:
+                            logger.error(f"Error decoding body: {str(e)}")
+                            body = ''
 
                     # 创建邮件对象
                     email = Email(
@@ -156,14 +203,60 @@ class EmailSyncService:
             # 解析邮件内容
             body = ''
             html_body = ''
+
+            def process_part(part: dict) -> None:
+                """递归处理邮件部分
+
+                Args:
+                    part: 邮件部分对象
+                """
+                nonlocal body, html_body
+
+                # 处理当前部分
+                if part.get('mimeType') == 'text/plain':
+                    if 'data' in part.get('body', {}):
+                        try:
+                            # 添加base64填充
+                            data = part['body']['data']
+                            padding = 4 - (len(data) % 4)
+                            if padding != 4:
+                                data += '=' * padding
+                            body = base64.urlsafe_b64decode(data).decode('utf-8')
+                        except Exception as e:
+                            logger.error(f"Error decoding plain text: {str(e)}")
+                            body = ''
+                elif part.get('mimeType') == 'text/html':
+                    if 'data' in part.get('body', {}):
+                        try:
+                            # 添加base64填充
+                            data = part['body']['data']
+                            padding = 4 - (len(data) % 4)
+                            if padding != 4:
+                                data += '=' * padding
+                            html_body = base64.urlsafe_b64decode(data).decode('utf-8')
+                        except Exception as e:
+                            logger.error(f"Error decoding HTML: {str(e)}")
+                            html_body = ''
+                elif part.get('mimeType', '').startswith('multipart/'):
+                    # 递归处理多部分邮件
+                    for subpart in part.get('parts', []):
+                        process_part(subpart)
+
+            # 处理邮件内容
             if 'parts' in payload:
                 for part in payload['parts']:
-                    if part.get('mimeType') == 'text/plain':
-                        body = part.get('body', {}).get('data', '')
-                    elif part.get('mimeType') == 'text/html':
-                        html_body = part.get('body', {}).get('data', '')
-            elif 'body' in payload:
-                body = payload.get('body', {}).get('data', '')
+                    process_part(part)
+            elif 'body' in payload and 'data' in payload['body']:
+                try:
+                    # 添加base64填充
+                    data = payload['body']['data']
+                    padding = 4 - (len(data) % 4)
+                    if padding != 4:
+                        data += '=' * padding
+                    body = base64.urlsafe_b64decode(data).decode('utf-8')
+                except Exception as e:
+                    logger.error(f"Error decoding body: {str(e)}")
+                    body = ''
 
             # 创建邮件对象
             return Email(

@@ -10,6 +10,7 @@ from backend.app.db.models import User, Email
 from backend.app.config.config import Config
 from googleapiclient.errors import HttpError
 
+
 @pytest.fixture(autouse=True)
 def mock_config():
     """模拟配置"""
@@ -22,6 +23,7 @@ def mock_config():
             }
         }
         yield mock_config
+
 
 @pytest.fixture(autouse=True)
 def mock_http():
@@ -52,6 +54,7 @@ def mock_http():
         mock_http_class.return_value = http
         yield http
 
+
 @pytest.fixture
 def mock_gmail_service():
     mock_service = Mock()
@@ -76,6 +79,24 @@ def mock_gmail_service():
     mock_messages.get = Mock(return_value=mock_get)
 
     def get_message_response(msg_id='msg1'):
+        """获取消息响应
+        from: https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages?hl=zh-cn#Message
+        {
+          "id": string,
+          "threadId": string,
+          "labelIds": [
+            string
+          ],
+          "snippet": string,
+          "historyId": string,
+          "internalDate": string,
+          "payload": {
+            object (MessagePart)
+          },
+          "sizeEstimate": integer,
+          "raw": string
+        }
+        """
         return {
             'id': msg_id,
             'threadId': f'thread_{msg_id}',
@@ -133,6 +154,7 @@ def mock_gmail_service():
 
     return mock_service
 
+
 @pytest.fixture
 def test_user():
     """创建测试用户"""
@@ -144,6 +166,7 @@ def test_user():
             'refresh_token': 'test_refresh_token'
         }
     )
+
 
 @pytest.fixture
 def sync_service(mock_gmail_service):
@@ -160,11 +183,13 @@ def sync_service(mock_gmail_service):
     )
     return service
 
+
 def test_service_initialization():
     """测试服务初始化"""
     service = EmailSyncService()
     assert service.service is None
     assert service.user is None
+
 
 def test_sync_emails(sync_service, mock_gmail_service):
     """测试同步邮件"""
@@ -176,6 +201,7 @@ def test_sync_emails(sync_service, mock_gmail_service):
     assert emails[0].from_header == 'sender@example.com'
     assert emails[0].to_header == 'recipient@example.com'
 
+
 def test_get_email(sync_service, mock_gmail_service):
     """测试获取单个邮件"""
     email = sync_service.get_email('msg1')
@@ -184,6 +210,7 @@ def test_get_email(sync_service, mock_gmail_service):
     assert email.subject == 'Test Subject'
     assert email.from_header == 'sender@example.com'
     assert email.to_header == 'recipient@example.com'
+
 
 def test_update_email_labels(sync_service, mock_gmail_service):
     """测试更新邮件标签"""
@@ -203,6 +230,7 @@ def test_update_email_labels(sync_service, mock_gmail_service):
     # 验证 execute 方法被调用
     mock_modify().execute.assert_called_once()
 
+
 def test_sync_emails_error(sync_service, mock_gmail_service):
     """测试同步邮件错误"""
     mock_gmail_service.users().messages = Mock(return_value=mock_gmail_service._messages_error)
@@ -210,6 +238,7 @@ def test_sync_emails_error(sync_service, mock_gmail_service):
     with pytest.raises(Exception) as exc_info:
         sync_service.sync_emails()
     assert 'API Error' in str(exc_info.value)
+
 
 def test_get_email_error(sync_service, mock_gmail_service):
     """测试获取邮件错误"""
@@ -230,6 +259,7 @@ def test_get_email_error(sync_service, mock_gmail_service):
         sync_service.get_email('not_exist')
     assert 'Failed to get email' in str(exc_info.value)
 
+
 def test_update_email_labels_error(sync_service, mock_gmail_service):
     """测试更新标签错误"""
     mock_gmail_service.users().messages = Mock(return_value=mock_gmail_service._messages_error)
@@ -237,3 +267,97 @@ def test_update_email_labels_error(sync_service, mock_gmail_service):
     with pytest.raises(Exception) as exc_info:
         sync_service.update_email_labels('msg1', add_labels=['INVALID'], remove_labels=[])
     assert 'Invalid request' in str(exc_info.value)
+
+
+def test_email_sync_service_sync_emails_with_invalid_base64(sync_service, mock_gmail_service):
+    """测试处理无效的base64编码"""
+    # 模拟邮件列表响应
+    mock_gmail_service.users().messages().list().execute.return_value = {
+        'messages': [{'id': 'msg1', 'threadId': 'thread1'}],
+        'nextPageToken': None
+    }
+
+    # 模拟邮件详情响应
+    mock_gmail_service.users().messages().get().execute.return_value = {
+        'id': 'msg1',
+        'threadId': 'thread1',
+        'labelIds': ['INBOX'],
+        'payload': {
+            'headers': [
+                {'name': 'Subject', 'value': 'Test Invalid Base64'},
+                {'name': 'From', 'value': 'sender@example.com'},
+                {'name': 'To', 'value': 'recipient@example.com'}
+            ],
+            'parts': [
+                {
+                    'mimeType': 'text/plain',
+                    'body': {'data': 'Invalid base64 data'}
+                }
+            ]
+        }
+    }
+
+    emails = sync_service.sync_emails(max_results=1)
+    assert len(emails) == 1
+    assert emails[0].body == ''  # 应该返回空字符串而不是抛出异常
+
+
+def test_email_sync_service_sync_emails_with_missing_data(sync_service, mock_gmail_service):
+    """测试处理缺失的data字段"""
+    # 模拟邮件列表响应
+    mock_gmail_service.users().messages().list().execute.return_value = {
+        'messages': [{'id': 'msg1', 'threadId': 'thread1'}],
+        'nextPageToken': None
+    }
+
+    # 模拟邮件详情响应
+    mock_gmail_service.users().messages().get().execute.return_value = {
+        'id': 'msg1',
+        'threadId': 'thread1',
+        'labelIds': ['INBOX'],
+        'payload': {
+            'headers': [
+                {'name': 'Subject', 'value': 'Test Missing Data'},
+                {'name': 'From', 'value': 'sender@example.com'},
+                {'name': 'To', 'value': 'recipient@example.com'}
+            ],
+            'parts': [
+                {
+                    'mimeType': 'text/plain',
+                    'body': {}  # 没有data字段
+                }
+            ]
+        }
+    }
+
+    emails = sync_service.sync_emails(max_results=1)
+    assert len(emails) == 1
+    assert emails[0].body == ''  # 应该返回空字符串而不是抛出异常
+
+
+def test_email_sync_service_sync_emails_with_empty_parts(sync_service, mock_gmail_service):
+    """测试处理空的parts数组"""
+    # 模拟邮件列表响应
+    mock_gmail_service.users().messages().list().execute.return_value = {
+        'messages': [{'id': 'msg1', 'threadId': 'thread1'}],
+        'nextPageToken': None
+    }
+
+    # 模拟邮件详情响应
+    mock_gmail_service.users().messages().get().execute.return_value = {
+        'id': 'msg1',
+        'threadId': 'thread1',
+        'labelIds': ['INBOX'],
+        'payload': {
+            'headers': [
+                {'name': 'Subject', 'value': 'Test Empty Parts'},
+                {'name': 'From', 'value': 'sender@example.com'},
+                {'name': 'To', 'value': 'recipient@example.com'}
+            ],
+            'parts': []  # 空的parts数组
+        }
+    }
+
+    emails = sync_service.sync_emails(max_results=1)
+    assert len(emails) == 1
+    assert emails[0].body == ''  # 应该返回空字符串而不是抛出异常
