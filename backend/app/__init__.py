@@ -3,11 +3,13 @@
 """
 from flask import Flask
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 
 from .config.config import config
 from .utils.logger import setup_logger
 from .db.database import db
 from .api.base import bp as base_bp
+from .api.auth import auth_bp
 
 
 def create_app(config_name='default') -> Flask:
@@ -28,10 +30,14 @@ def create_app(config_name='default') -> Flask:
     # 初始化数据库
     db.init_app(app)
 
+    # 初始化 JWT
+    jwt = JWTManager(app)
+
     # 启用CORS
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     # 注册蓝图
     app.register_blueprint(base_bp, url_prefix=app.config['API_PREFIX'])
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
     return app

@@ -35,7 +35,6 @@ sequenceDiagram
 | 任务调度 | APScheduler           | 支持Cron式调度，动态任务管理                       ||
 | 配置管理 | 环境变量 + Config类        | 实现开发/生产环境零修改切换                         |
 
-
 [OAuth2.0](https://developers.google.com/identity/protocols/oauth2)
 
 ```mermaid
@@ -81,6 +80,12 @@ sequenceDiagram
 #### 邮箱采集模块
 
 使用 `IMAP` 协议登录邮箱，获取邮件内容。
+
+为了更好的利用AI分析！
+1. 预处理。将邮件格式转为txt text 内容
+2. 内容分析。摘要生成、关键字等
+3. 存储。存储到数据库
+4. Error Handling。处理异常情况
 
 #### 邮箱发送模块
 
