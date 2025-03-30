@@ -26,7 +26,6 @@
                     <select id="model" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         <option value="">请先选择服务提供商</option>
                     </select>
-                    <p class="mt-1 text-sm text-gray-500">DeepSeek-V3 适合通用对话，DeepSeek-R1 适合复杂推理</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">温度 (Temperature)</label>
@@ -73,13 +72,91 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendBtn = document.getElementById('sendBtn');
     const chatArea = document.getElementById('chatArea');
 
+    // AI 服务提供商和模型配置
+    const AI_PROVIDERS = {
+        'deepseek': {
+            name: 'DeepSeek',
+            models: {
+                'deepseek-chat': 'DeepSeek Chat',
+                'deepseek-reasoner': 'DeepSeek Reasoner',
+            }
+        },
+        'openai': {
+            name: 'OpenAI',
+            models: {
+                'gpt-4': 'GPT-4'
+            }
+        },
+    };
+
+    // 初始化 AI 配置
+    function initAIConfig() {
+        // 初始化服务提供商选项
+        providerSelect.innerHTML = '<option value="">请选择服务提供商</option>';
+        for (const [providerId, provider] of Object.entries(AI_PROVIDERS)) {
+            const option = document.createElement('option');
+            option.value = providerId;
+            option.textContent = provider.name;
+            providerSelect.appendChild(option);
+        }
+
+        // 监听服务提供商变化
+        providerSelect.addEventListener('change', function() {
+            updateModelOptions(this.value);
+        });
+
+        // 从本地存储加载之前的配置
+        const savedConfig = JSON.parse(localStorage.getItem('aiConfig') || '{}');
+        if (savedConfig.apiKey) apiKeyInput.value = savedConfig.apiKey;
+        if (savedConfig.provider) {
+            providerSelect.value = savedConfig.provider;
+            updateModelOptions(savedConfig.provider);
+            if (savedConfig.model) modelSelect.value = savedConfig.model;
+        }
+        if (savedConfig.temperature) {
+            temperatureInput.value = savedConfig.temperature;
+            temperatureValue.textContent = savedConfig.temperature;
+        }
+    }
+
+    // 更新模型选项
+    function updateModelOptions(providerId) {
+        modelSelect.innerHTML = '<option value="">请选择模型</option>';
+        if (providerId && AI_PROVIDERS[providerId]) {
+            const models = AI_PROVIDERS[providerId].models;
+            for (const [modelId, modelName] of Object.entries(models)) {
+                const option = document.createElement('option');
+                option.value = modelId;
+                option.textContent = modelName;
+                modelSelect.appendChild(option);
+            }
+        }
+    }
+
+    // 保存配置到本地存储
+    function saveConfig() {
+        const config = {
+            apiKey: apiKeyInput.value,
+            provider: providerSelect.value,
+            model: modelSelect.value,
+            temperature: temperatureInput.value
+        };
+        localStorage.setItem('aiConfig', JSON.stringify(config));
+    }
+
     // 初始化 AI 配置
     initAIConfig();
 
     // 温度滑块事件
     temperatureInput.addEventListener('input', function() {
         temperatureValue.textContent = this.value;
+        saveConfig();
     });
+
+    // 配置变化时保存
+    apiKeyInput.addEventListener('change', saveConfig);
+    providerSelect.addEventListener('change', saveConfig);
+    modelSelect.addEventListener('change', saveConfig);
 
     // 验证 API 配置
     validateBtn.addEventListener('click', validateAPI);

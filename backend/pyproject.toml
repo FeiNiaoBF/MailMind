@@ -4,11 +4,11 @@ version = "0.1.0"
 description = "An intelligent email management system"
 authors = ["yee"]
 readme = "README.md"
-packages = [{ include = "app" }]
+packages = [{ include = "app" }, { include = "tests" }]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
-flask = "^3.0.2"
+flask = {extras = ["async"], version = "^3.1.0"}
 python-dotenv = "^1.0.1"
 pyyaml = "^6.0.1"
 werkzeug = "^3.0.1"
@@ -24,6 +24,11 @@ google-auth-httplib2 = "^0.2.0"
 google-api-python-client = "^2.120.0"
 pytest-mock = "^3.12.0"
 beautifulsoup4 = "^4.12.0"
+openai = "^1.66.0"
+flask-mail = "^0.9.1"
+pytz = "^2025.2"
+apscheduler = "^3.10.4"
+httpx = "^0.26.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -37,7 +42,8 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-start = "run:create_app"
+start = "run:main"
+dev = "run:main"
 
 [tool.black]
 line-length = 88
@@ -61,3 +67,4 @@ plugins = ["pydantic.mypy"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v --cov=app --cov-report=term-missing"
+pythonpath = ["."]
