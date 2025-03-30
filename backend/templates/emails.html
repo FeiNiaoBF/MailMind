@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}邮件分析{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- AI 配置部分 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">AI 配置</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">API 密钥</label>
+                    <input type="password" id="apiKey" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <p class="mt-1 text-sm text-gray-500">请输入您的 DeepSeek API 密钥</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">服务提供商</label>
+                    <select id="provider" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">请选择服务提供商</option>
+                    </select>
+                    <p class="mt-1 text-sm text-gray-500">目前支持 DeepSeek 服务</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">模型</label>
+                    <select id="model" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">请先选择服务提供商</option>
+                    </select>
+                    <p class="mt-1 text-sm text-gray-500">DeepSeek-V3 适合通用分析，DeepSeek-R1 适合深度推理</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">温度 (Temperature)</label>
+                    <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7" class="mt-1 block w-full">
+                    <span id="temperatureValue" class="text-sm text-gray-500">0.7</span>
+                    <p class="mt-1 text-sm text-gray-500">值越高，分析越有创造性；值越低，分析越确定性</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <button id="validateBtn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    验证配置
+                </button>
+            </div>
+        </div>
+
+        <!-- 文件上传区域 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">邮件文件</h2>
+            <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <div class="text-gray-500">
+                    <i class="fas fa-cloud-upload-alt text-4xl mb-2"></i>
+                    <p>拖拽邮件文件到这里，或者</p>
+                    <label class="mt-2 inline-block">
+                        <span class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 cursor-pointer">
+                            选择文件
+                        </span>
+                        <input type="file" id="fileInput" class="hidden" multiple accept=".eml,.txt">
+                    </label>
+                    <p class="mt-2 text-sm">支持 .eml 和 .txt 格式</p>
+                </div>
+            </div>
+            <div id="fileList" class="mt-4 space-y-2"></div>
+        </div>
+
+        <!-- 分析结果区域 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">分析结果</h2>
+            <div id="analysisResults" class="space-y-4">
+                <!-- 结果将在这里显示 -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const apiKeyInput = document.getElementById('apiKey');
+    const providerSelect = document.getElementById('provider');
+    const modelSelect = document.getElementById('model');
+    const temperatureInput = document.getElementById('temperature');
+    const temperatureValue = document.getElementById('temperatureValue');
+    const validateBtn = document.getElementById('validateBtn');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const analysisResults = document.getElementById('analysisResults');
+
+    // 初始化 AI 配置
+    initAIConfig();
+
+    // 温度滑块事件
+    temperatureInput.addEventListener('input', function() {
+        temperatureValue.textContent = this.value;
+    });
+
+    // 验证 API 配置
+    validateBtn.addEventListener('click', validateAPI);
+
+    // 文件拖放事件
+    dropZone.addEventListener('dragover', handleDragOver);
+    dropZone.addEventListener('dragleave', handleDragLeave);
+    dropZone.addEventListener('drop', handleDrop);
+    fileInput.addEventListener('change', handleFileSelect);
+
+    async function validateAPI() {
+        const apiKey = apiKeyInput.value;
+        const provider = providerSelect.value;
+        const model = modelSelect.value;
+
+        if (!apiKey || !provider || !model) {
+            alert('请填写完整的 API 配置信息');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/ai/validate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    api_key: apiKey,
+                    provider: provider,
+                    model: model
+                })
+            });
+
+            const data = await response.json();
+            if (data.valid) {
+                alert('API 配置验证成功');
+                fileInput.disabled = false;
+            } else {
+                alert(data.message || 'API 配置验证失败');
+            }
+        } catch (error) {
+            alert('验证失败：' + error.message);
+        }
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-500');
+    }
+
+    function handleDragLeave(e) {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500');
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500');
+        const files = e.dataTransfer.files;
+        handleFiles(files);
+    }
+
+    function handleFileSelect(e) {
+        const files = e.target.files;
+        handleFiles(files);
+    }
+
+    function handleFiles(files) {
+        for (const file of files) {
+            if (file.name.endsWith('.eml') || file.name.endsWith('.txt')) {
+                addFileToList(file);
+                analyzeFile(file);
+            } else {
+                alert('不支持的文件格式：' + file.name);
+            }
+        }
+    }
+
+    function addFileToList(file) {
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'flex items-center justify-between p-2 bg-gray-50 rounded';
+        fileDiv.innerHTML = `
+            <span class="text-sm">${file.name}</span>
+            <span class="text-sm text-gray-500">${formatFileSize(file.size)}</span>
+        `;
+        fileList.appendChild(fileDiv);
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    async function analyzeFile(file) {
+        const apiKey = apiKeyInput.value;
+        const provider = providerSelect.value;
+        const model = modelSelect.value;
+        const temperature = parseFloat(temperatureInput.value);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('api_key', apiKey);
+            formData.append('provider', provider);
+            formData.append('model', model);
+            formData.append('temperature', temperature);
+
+            const response = await fetch('/api/ai/analyze', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            displayAnalysisResult(file.name, data);
+        } catch (error) {
+            displayError(file.name, error.message);
+        }
+    }
+
+    function displayAnalysisResult(fileName, data) {
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'bg-gray-50 rounded-lg p-4';
+        resultDiv.innerHTML = `
+            <h3 class="font-semibold mb-2">${fileName}</h3>
+            <div class="space-y-2">
+                <p><strong>主题：</strong>${data.subject || '无'}</p>
+                <p><strong>发件人：</strong>${data.sender || '无'}</p>
+                <p><strong>收件人：</strong>${data.recipient || '无'}</p>
+                <p><strong>日期：</strong>${data.date || '无'}</p>
+                <p><strong>内容摘要：</strong>${data.summary || '无'}</p>
+                <p><strong>情感分析：</strong>${data.sentiment || '无'}</p>
+                <p><strong>关键词：</strong>${data.keywords?.join(', ') || '无'}</p>
+                <p><strong>建议回复：</strong>${data.reply_suggestion || '无'}</p>
+            </div>
+        `;
+        analysisResults.appendChild(resultDiv);
+    }
+
+    function displayError(fileName, error) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'bg-red-50 text-red-700 rounded-lg p-4';
+        errorDiv.innerHTML = `
+            <h3 class="font-semibold mb-2">${fileName}</h3>
+            <p>分析失败：${error}</p>
+        `;
+        analysisResults.appendChild(errorDiv);
+    }
+});
+</script>
+{% endblock %}

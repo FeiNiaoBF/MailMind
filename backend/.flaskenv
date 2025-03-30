@@ -1,4 +1,6 @@
 # Flask 配置
-FLASK_APP = app
-FLASK_ENV = development # production | development | testing | default
-FLASK_DEBUG = False
+FLASK_APP=run.py
+FLASK_ENV=development
+FLASK_DEBUG=True
+HOST=0.0.0.0
+PORT=5000

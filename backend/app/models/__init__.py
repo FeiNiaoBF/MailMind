@@ -1,9 +1,8 @@
 """
-Models package
+模型包
 """
 from .user import User
 from .email import Email
-from .analysis import Analysis
-from .task import Task
+from .chat import ChatHistory
 
-__all__ = ['User', 'Email', 'Analysis', 'Task']
+__all__ = ['User', 'Email', 'ChatHistory']

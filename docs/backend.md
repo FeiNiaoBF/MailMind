@@ -82,6 +82,7 @@ sequenceDiagram
 使用 `IMAP` 协议登录邮箱，获取邮件内容。
 
 为了更好的利用AI分析！
+
 1. 预处理。将邮件格式转为txt text 内容
 2. 内容分析。摘要生成、关键字等
 3. 存储。存储到数据库
@@ -196,6 +197,41 @@ erDiagram
 4. **USER**模型应存储用户信息，包括电子邮件地址、是否激活、最后登录时间和创建时间戳。
 
 ### AI 分析模块
+
+#### Flask路由集成
+
+| api                          | 作用      |
+|------------------------------|---------|
+| `GET/POST: /api/v1/chat`     | 与AI模型对话 |
+| `GET/POST: /api/v1/analyze`  | 分析邮件内容  |
+| `GET/POST: /api/v1/summary`  | 获取邮件摘要  |
+| `GET/POST: /api/v1/keywords` | 获取邮件关键字 |
+
+#### 配置项
+
+```python
+# config.py
+class Config:
+    # OpenAI配置
+    OPENAI_API_KEY = "api-key"
+    OPENAI_MODEL = "gpt"
+
+    ## 其他
+    # 重试策略
+    API_RETRY_TIMES = 3
+    API_TIMEOUT = 10
+```
+
+#### 部署架构
+
+```mermaid
+graph TD
+    A[客户端] --> B{Flask服务器}
+    B --> C[对话管理模块]
+    C --> D[OpenAI API]
+    B --> G[MySQL日志存储]
+    D --> H{响应返回}
+```
 
 ### 邮件发送模块
 

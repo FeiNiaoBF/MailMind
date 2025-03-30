@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}MailMind{% endblock %}</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+      rel="stylesheet" />
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body class="bg-gray-100">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-lg">
+      <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between h-16">
+          <div class="flex">
+            <div class="flex-shrink-0 flex items-center">
+              <a href="/" class="text-xl font-bold text-gray-800">MailMind</a>
+            </div>
+            <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <a
+                href="/"
+                class="inline-flex items-center px-1 pt-1 text-gray-500 hover:text-gray-700">
+                <i class="fas fa-home mr-1"></i>首页
+              </a>
+              <a
+                href="/chat"
+                class="inline-flex items-center px-1 pt-1 text-gray-500 hover:text-gray-700">
+                <i class="fas fa-comments mr-1"></i>AI 对话
+              </a>
+              <a
+                href="/emails"
+                class="inline-flex items-center px-1 pt-1 text-gray-500 hover:text-gray-700">
+                <i class="fas fa-envelope mr-1"></i>邮件分析
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main class="py-6">{% block content %}{% endblock %}</main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white shadow-lg mt-8">
+      <div class="max-w-7xl mx-auto py-4 px-4">
+        <p class="text-center text-gray-500 text-sm">
+          &copy; 2025 MailMind. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // AI 配置相关函数
+      async function initAIConfig() {
+        try {
+          const response = await fetch('/api/ai/providers');
+          const data = await response.json();
+
+          // 清空选项
+          providerSelect.innerHTML = '<option value="">请选择服务提供商</option>';
+
+          // 添加 DeepSeek 选项
+          if (data.providers.deepseek) {
+            const option = document.createElement('option');
+            option.value = 'deepseek';
+            option.textContent = 'DeepSeek';
+            providerSelect.appendChild(option);
+          }
+
+          // 监听服务提供商变化
+          providerSelect.addEventListener('change', function() {
+            updateModelSelect(this.value, data.providers);
+          });
+
+        } catch (error) {
+          console.error('获取服务提供商失败:', error);
+        }
+      }
+
+      function updateModelSelect(provider, providers) {
+        modelSelect.innerHTML = '<option value="">请选择模型</option>';
+
+        if (provider === 'deepseek') {
+          const models = [
+            {
+              id: 'deepseek-chat',
+              name: 'DeepSeek-V3',
+              description: '通用对话模型，支持多种任务',
+              max_tokens: 8192,
+              temperature_range: [0, 2]
+            },
+            {
+              id: 'deepseek-reasoner',
+              name: 'DeepSeek-R1',
+              description: '推理增强模型，支持复杂思维链',
+              max_tokens: 8192,
+              temperature_range: [0, 2]
+            }
+          ];
+
+          models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = `${model.name} - ${model.description}`;
+            modelSelect.appendChild(option);
+          });
+
+          // 更新温度范围
+          temperatureInput.min = 0;
+          temperatureInput.max = 2;
+          temperatureInput.step = 0.1;
+          temperatureInput.value = 0.7;
+          temperatureValue.textContent = '0.7';
+        }
+      }
+    </script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

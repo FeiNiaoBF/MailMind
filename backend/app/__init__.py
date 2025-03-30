@@ -1,43 +1,23 @@
 """
-应用工厂模块
+Flask应用初始化
 """
 from flask import Flask
-from flask_cors import CORS
-from flask_jwt_extended import JWTManager
+from .config import config
+from .routes.views import views
+from .routes.chat_routes import chat_bp
+from .routes.ai_routes import ai_bp
 
-from .config.config import config
-from .utils.logger import setup_logger
-from .db.database import db
-from .api.base import bp as base_bp
-from .api.auth import auth_bp
-
-
-def create_app(config_name='default') -> Flask:
-    """创建Flask应用
-    :param config_name: 配置名称
-    :return: Flask应用
-    """
-    app = Flask(__name__)
+def create_app(config_name='dev'):
+    """创建Flask应用"""
+    app = Flask(__name__, template_folder='../templates')
 
     # 加载配置
-    cfg = config[config_name]
-    app.config.from_object(cfg)
-    cfg.init_app(app)
-
-    # 初始化日志系统
-    setup_logger(app)
-
-    # 初始化数据库
-    db.init_app(app)
-
-    # 初始化 JWT
-    jwt = JWTManager(app)
-
-    # 启用CORS
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    app.config.from_object(config[config_name])
+    config[config_name].init_app(app)
 
     # 注册蓝图
-    app.register_blueprint(base_bp, url_prefix=app.config['API_PREFIX'])
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(views)
+    app.register_blueprint(chat_bp)
+    app.register_blueprint(ai_bp, url_prefix='/api/ai')  # 添加AI蓝图，设置URL前缀
 
     return app

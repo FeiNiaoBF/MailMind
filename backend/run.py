@@ -1,9 +1,27 @@
+"""
+应用启动文件
+"""
 import os
+from dotenv import load_dotenv
 from app import create_app
 
-if __name__ == '__main__':
+# 加载环境变量
+load_dotenv()
+
+def main():
+    """主函数"""
+    # 创建应用实例
     app = create_app()
-    app.logger.info('应用启动')
-    app.logger.debug(f'环境: {app.config.get("FLASK_ENV", "development")}')
-    app.logger.debug(f'调试模式: {app.debug}')
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
+
+    # 获取配置
+    port = int(os.getenv('PORT', 5000))
+    host = os.getenv('HOST', '0.0.0.0')
+
+    # 启动应用
+    app.run(
+        host=host,
+        port=port,
+    )
+
+if __name__ == '__main__':
+    main()
