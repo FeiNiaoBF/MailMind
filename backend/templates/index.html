@@ -1,68 +1,71 @@
-{% extends "base.html" %} {% block title %}MailMind - 智能邮件助手{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}MailMind - 智能邮件助手{% endblock %}
+
 {% block content %}
-<div class="bg-white shadow rounded-lg overflow-hidden">
-  <div class="px-4 py-5 sm:p-6">
-    <h1 class="text-3xl font-bold text-gray-900 mb-8 text-center">
-      MailMind
-    </h1>
-
-    <!-- 登录状态显示 -->
-    <div class="text-center mb-8">
-      {% if session.get('credentials') %}
-        <div class="flex items-center justify-center space-x-4">
-          <span class="text-gray-600">已登录</span>
-          <a href="{{ url_for('auth.revoke_google_token') }}"
-             class="text-red-600 hover:text-red-800">
-            退出登录
-          </a>
-        </div>
-      {% else %}
-        <a href="{{ url_for('auth.google_login') }}"
-           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-          <i class="fab fa-google mr-2"></i>
-          使用Google账号登录
-        </a>
-      {% endif %}
+<div class="max-w-4xl mx-auto">
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">
+            欢迎使用 MailMind
+        </h1>
+        <p class="text-xl text-gray-600">
+            您的智能邮件助手
+        </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-      <!-- AI对话功能 -->
-      <div
-        class="bg-indigo-50 rounded-lg p-6 hover:shadow-lg transition duration-300">
-        <div class="flex items-center mb-4">
-          <i class="fas fa-comments text-2xl text-indigo-600 mr-3"></i>
-          <h2 class="text-xl font-semibold text-gray-900">AI 智能对话</h2>
+    {% if not session.get('user') %}
+        <div class="bg-white shadow rounded-lg p-8 text-center">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-4">开始使用</h2>
+            <p class="text-gray-600 mb-6">
+                登录您的 Google 账号，开始管理您的邮件
+            </p>
+            <a href="{{ url_for('auth.google_login') }}"
+               class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <i class="fab fa-google mr-2"></i>
+                使用 Google 账号登录
+            </a>
         </div>
-        <p class="text-gray-600 mb-4">
-          支持 DeepSeek 的两个强大模型：DeepSeek-V3 通用对话模型和 DeepSeek-R1 推理增强模型。可根据需求选择合适的模型进行对话和分析。
-        </p>
-        <a
-          href="{{ url_for('views.chat') }}"
-          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-          开始对话
-          <i class="fas fa-arrow-right ml-2"></i>
-        </a>
-      </div>
-
-      <!-- 邮件分析功能 -->
-      <div
-        class="bg-purple-50 rounded-lg p-6 hover:shadow-lg transition duration-300">
-        <div class="flex items-center mb-4">
-          <i
-            class="fas fa-envelope-open-text text-2xl text-purple-600 mr-3"></i>
-          <h2 class="text-xl font-semibold text-gray-900">邮件智能分析</h2>
+    {% else %}
+        <div class="grid gap-6 md:grid-cols-2">
+            <a href="{{ url_for('views.emails') }}"
+               class="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow">
+                <h2 class="text-xl font-semibold text-gray-900 mb-2">
+                    <i class="fas fa-envelope mr-2 text-blue-600"></i>
+                    邮件管理
+                </h2>
+                <p class="text-gray-600">
+                    查看和管理您的所有邮件
+                </p>
+            </a>
+            <a href="{{ url_for('views.chat') }}"
+               class="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow">
+                <h2 class="text-xl font-semibold text-gray-900 mb-2">
+                    <i class="fas fa-robot mr-2 text-purple-600"></i>
+                    AI 助手
+                </h2>
+                <p class="text-gray-600">
+                    与智能助手对话，获取帮助
+                </p>
+            </a>
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-2">
+                    <i class="fas fa-user mr-2 text-green-600"></i>
+                    账号信息
+                </h2>
+                <p class="text-gray-600">
+                    {{ session.get('user').get('email') }}
+                </p>
+            </div>
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-2">
+                    <i class="fas fa-cog mr-2 text-gray-600"></i>
+                    设置
+                </h2>
+                <p class="text-gray-600">
+                    配置您的邮件和 AI 助手
+                </p>
+            </div>
         </div>
-        <p class="text-gray-600 mb-4">
-          上传您的邮件，使用多种AI模型为您分析内容要点，生成回复建议，提高邮件处理效率。
-        </p>
-        <a
-          href="{{ url_for('views.emails') }}"
-          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
-          分析邮件
-          <i class="fas fa-arrow-right ml-2"></i>
-        </a>
-      </div>
-    </div>
-  </div>
+    {% endif %}
 </div>
 {% endblock %}

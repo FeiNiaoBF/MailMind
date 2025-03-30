@@ -1,53 +1,53 @@
 """
 用户模型
 """
-from datetime import datetime, UTC
-from typing import Optional, Dict, Any
-from backend.app.db.database import db, BaseModel
+from datetime import datetime, timedelta
+
+from app.config.timezone import china_tz
+from app.db.database import db, BaseModel
+
 
 class User(BaseModel):
-    """用户模型类"""
+    """用户模型"""
     __tablename__ = 'users'
-
+    __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(255), unique=True, nullable=False, comment='用户邮箱')
-    name = db.Column(db.String(255), comment='用户名')
-    is_active = db.Column(db.Boolean, default=True, comment='用户是否激活')
-    last_login = db.Column(db.DateTime, comment='最后登录时间')
-    oauth_provider = db.Column(db.String(20), comment='OAuth提供商(gmail/mailtrap)')
-    oauth_uid = db.Column(db.String(255), unique=True, comment='第三方唯一ID')
-    oauth_token = db.Column(db.JSON, comment='OAuth令牌信息')
-    google_id = db.Column(db.String(120), unique=True, nullable=True, comment='Google用户ID')
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    last_login = db.Column(db.DateTime, default=lambda: datetime.now(china_tz))
 
-    # 关联关系
-    emails = db.relationship('Email', backref='user', lazy=True)
-    tasks = db.relationship('Task', backref='user', lazy=True)
+    # OAuth 字段
+    auth_provider = db.Column(db.String(50))  # 认证提供商（例如：google）
+    provider_id = db.Column(db.String(255))  # 第三方用户唯一ID
+    access_token = db.Column(db.String(512))  # 移除加密存储注释
+    refresh_token = db.Column(db.String(512))
+    token_expiry = db.Column(db.DateTime)  # token过期时间
 
-    def __init__(self, email: str, oauth_uid: Optional[str] = None,
-                 oauth_token: Optional[dict] = None, oauth_provider: Optional[str] = None,
-                 google_id: Optional[str] = None):
+    def __init__(self, email: str, **kwargs):
         """初始化用户"""
-        super().__init__()
         self.email = email
-        self.oauth_uid = oauth_uid
-        self.oauth_token = oauth_token
-        self.oauth_provider = oauth_provider
-        self.google_id = google_id
-        self.last_login = datetime.now(UTC)
+        self.last_login = datetime.now(china_tz)
+        # 处理 OAuth 相关字段
+        if kwargs.get('auth_provider') == 'google':
+            self.auth_provider = 'google'
+            self.provider_id = kwargs.get('provider_id')
+            # 直接存储不加密
+            self.access_token = kwargs.get('access_token')
+            self.refresh_token = kwargs.get('refresh_token')
+            self.token_expiry = datetime.now(china_tz) + timedelta(
+                seconds=kwargs.get('expires_in', 3600)
+            )
 
-    def update_oauth_token(self, token: dict) -> None:
-        """更新OAuth令牌"""
-        self.oauth_token = token
-        self.last_login = datetime.now(UTC)
+    def to_dict(self):
+        """转换为字典（移除敏感字段）"""
+        return {
+            'id': self.id,
+            'email': self.email,
+            'is_active': self.is_active,
+            'last_login': self.last_login.isoformat() if self.last_login else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'auth_provider': self.auth_provider
+        }
 
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
-        base_dict = super().to_dict()
-        # 格式化日期时间
-        if base_dict['last_login']:
-            base_dict['last_login'] = base_dict['last_login'].isoformat()
-        if base_dict['created_at']:
-            base_dict['created_at'] = base_dict['created_at'].isoformat()
-        if base_dict['updated_at']:
-            base_dict['updated_at'] = base_dict['updated_at'].isoformat()
-        return base_dict
+    def __repr__(self):
+        return f'<User {self.email}>'

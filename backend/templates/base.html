@@ -1,59 +1,61 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}MailMind{% endblock %}</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-      rel="stylesheet" />
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-      rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     {% block extra_css %}{% endblock %}
   </head>
-  <body class="bg-gray-100">
+  <body class="bg-gray-50 min-h-screen">
     <!-- 导航栏 -->
-    <nav class="bg-white shadow-lg">
-      <div class="max-w-7xl mx-auto px-4">
+    <nav class="bg-white shadow">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex">
+            <!-- Logo -->
             <div class="flex-shrink-0 flex items-center">
-              <a href="/" class="text-xl font-bold text-gray-800">MailMind</a>
+              <a href="{{ url_for('views.index') }}" class="text-xl font-bold text-gray-900">
+                MailMind
+              </a>
             </div>
+            <!-- 导航链接 -->
             <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <a
-                href="/"
-                class="inline-flex items-center px-1 pt-1 text-gray-500 hover:text-gray-700">
-                <i class="fas fa-home mr-1"></i>首页
+              <a href="{{ url_for('views.index') }}"
+                 class="border-transparent text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2">
+                首页
               </a>
-              <a
-                href="/chat"
-                class="inline-flex items-center px-1 pt-1 text-gray-500 hover:text-gray-700">
-                <i class="fas fa-comments mr-1"></i>AI 对话
-              </a>
-              <a
-                href="/emails"
-                class="inline-flex items-center px-1 pt-1 text-gray-500 hover:text-gray-700">
-                <i class="fas fa-envelope mr-1"></i>邮件分析
+              <a href="{{ url_for('views.emails') }}"
+                 class="border-transparent text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2">
+                邮件
               </a>
             </div>
+          </div>
+          <!-- 用户菜单 -->
+          <div class="flex items-center">
+            {% if session.get('user') %}
+              <span class="text-sm text-gray-500 mr-4">{{ session.get('user').get('email') }}</span>
+              <a href="{{ url_for('auth.google_logout') }}"
+                 class="text-sm text-red-600 hover:text-red-800">
+                退出
+              </a>
+            {% else %}
+              <a href="{{ url_for('auth.google_login') }}"
+                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <i class="fab fa-google mr-2"></i>
+                登录
+              </a>
+            {% endif %}
           </div>
         </div>
       </div>
     </nav>
 
     <!-- 主要内容 -->
-    <main class="py-6">{% block content %}{% endblock %}</main>
-
-    <!-- 页脚 -->
-    <footer class="bg-white shadow-lg mt-8">
-      <div class="max-w-7xl mx-auto py-4 px-4">
-        <p class="text-center text-gray-500 text-sm">
-          &copy; 2025 MailMind. All rights reserved.
-        </p>
-      </div>
-    </footer>
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      {% block content %}{% endblock %}
+    </main>
 
     <script>
       // AI 配置相关函数

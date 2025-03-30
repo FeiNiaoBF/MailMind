@@ -2,115 +2,113 @@
 认证路由模块
 处理用户认证相关的路由
 """
-from flask import Blueprint, request, redirect, url_for, jsonify, current_app
-from ..service.auth_service import AuthService, check_google_connection, create_http_client
+from datetime import datetime
+from flask import Blueprint, request, redirect, url_for, session, jsonify
+from ..service.auth_service import AuthService
+from ..service.email_sync import EmailSyncService
+from ..models import User
+from ..db.database import db
 from ..utils.logger import get_logger
+import secrets
 
 logger = get_logger(__name__)
 auth_bp = Blueprint('auth', __name__)
 auth_service = AuthService()
-
-@auth_bp.route('/network-test')
-def network_test():
-    """测试与Google服务的连接"""
-    try:
-        # 测试基本连接
-        if check_google_connection():
-            # 测试OAuth端点
-            with create_http_client(timeout=10.0) as client:
-                oauth_test = client.get('https://oauth2.googleapis.com/token')
-                cert_test = client.get('https://www.googleapis.com/oauth2/v1/certs')
-
-                return jsonify({
-                    'status': 'success',
-                    'message': 'Google服务连接正常',
-                    'details': {
-                        'basic_connection': True,
-                        'oauth_endpoint': oauth_test.status_code,
-                        'cert_endpoint': cert_test.status_code
-                    }
-                })
-        else:
-            return jsonify({
-                'status': 'error',
-                'message': '无法连接到Google服务',
-                'details': {
-                    'basic_connection': False
-                }
-            }), 503
-    except Exception as e:
-        logger.error(f"网络测试失败: {str(e)}")
-        return jsonify({
-            'status': 'error',
-            'message': f'网络测试出错: {str(e)}',
-            'details': None
-        }), 500
+email_sync_service = EmailSyncService()
 
 @auth_bp.route('/google/login')
 def google_login():
     """Google登录路由"""
     try:
-        auth_url = auth_service.get_google_auth_url()
+        # 生成并保存state
+        state = secrets.token_urlsafe(16)
+        session['oauth2_state'] = state
+        session.permanent = True
+
+        # 获取认证URL
+        auth_url = auth_service.get_auth_url(state)
+        logger.info(f"开始Google认证流程 - state: {state}")
         return redirect(auth_url)
     except Exception as e:
-        logger.error(f"Google登录失败: {str(e)}")
-        return redirect(url_for('views.index', error='认证失败，请稍后重试'))
+        logger.error(f"启动认证流程失败: {str(e)}")
+        return jsonify({'error': '认证失败，请稍后重试', 'details': str(e)}), 500
 
 @auth_bp.route('/google/callback')
 def google_callback():
-    """Google回调路由"""
+    """Google认证回调路由"""
     try:
-        auth_code = request.args.get('code')
-        if not auth_code:
-            logger.error("未收到授权码")
-            return redirect(url_for('views.index', error='认证失败，请重试'))
+        # 验证state
+        state = request.args.get('state')
+        stored_state = session.get('oauth2_state')
 
-        # 添加重试机制
-        max_retries = 3
-        last_error = None
+        if not state:
+            logger.error("未收到state参数")
+            return jsonify({'error': '无效的认证请求：缺少state参数'}), 400
 
-        for attempt in range(max_retries):
-            try:
-                # 检查授权码是否已过期
-                if 'invalid_grant' in str(last_error):
-                    logger.error("授权码已过期，需要重新获取")
-                    return redirect(url_for('auth.google_login'))
+        if not stored_state:
+            logger.error("session中未找到state")
+            return jsonify({'error': '无效的认证请求：session已过期'}), 400
 
-                result = auth_service.handle_google_callback(auth_code)
-                if result:
-                    # 重定向到前端，携带token
-                    frontend_url = current_app.config.get('FRONTEND_URL', 'http://localhost:3000')
-                    return redirect(f"{frontend_url}/chat?token={result['access_token']}")
-                else:
-                    logger.error(f"处理回调失败，第{attempt + 1}次尝试")
-                    if attempt == max_retries - 1:
-                        return redirect(url_for('views.index', error='认证失败，请重试'))
+        if state != stored_state:
+            logger.error(f"state不匹配: 收到 {state}, 期望 {stored_state}")
+            return jsonify({'error': '无效的认证请求：state不匹配'}), 400
 
-            except ConnectionError as e:
-                last_error = e
-                logger.error(f"连接错误，第{attempt + 1}次尝试: {str(e)}")
-                if attempt == max_retries - 1:
-                    return redirect(url_for('views.index', error='网络连接失败，请检查网络设置'))
+        # 处理回调
+        result = auth_service.handle_callback(request.url)
+        if not result:
+            logger.error("处理回调返回空结果")
+            return jsonify({'error': '认证失败：未获取到用户信息'}), 401
 
-            except ValueError as e:
-                last_error = e
-                logger.error(f"验证错误: {str(e)}")
-                if 'invalid_grant' in str(e):
-                    # 如果是授权码过期，直接重新开始认证流程
-                    logger.info("授权码已过期，重新开始认证流程")
-                    return redirect(url_for('auth.google_login'))
-                return redirect(url_for('views.index', error=str(e)))
+        # 获取或创建用户
+        user = User.query.filter_by(email=result['user']['email']).first()
+        if not user:
+            user = User(
+                email=result['user']['email'],
+                provider_id=result['user']['provider_id'],
+                auth_provider='google',
+                access_token=session['credentials']['token'],
+                refresh_token=session['credentials']['refresh_token']
+            )
+            db.session.add(user)
+        else:
+            user.access_token = session['credentials']['token']
+            user.refresh_token = session['credentials']['refresh_token']
+            user.last_login = datetime.now()
 
-            except Exception as e:
-                last_error = e
-                logger.error(f"处理回调出错，第{attempt + 1}次尝试: {str(e)}")
-                if attempt == max_retries - 1:
-                    if 'invalid_grant' in str(e):
-                        return redirect(url_for('auth.google_login'))
-                    return redirect(url_for('views.index', error='认证失败，请稍后重试'))
+        db.session.commit()
 
+        # 启动定时同步任务
+        email_sync_service.schedule_sync_for_user(user)
+        logger.info(f"已为用户 {user.email} 启动定时同步任务")
+
+        # 清理state
+        session.pop('oauth2_state', None)
+
+        # 重定向到主页
+        logger.info(f"用户 {result['user']['email']} 登录成功")
+        return redirect('/')
+
+    except ValueError as e:
+        logger.error(f"验证失败: {str(e)}")
+        return jsonify({'error': f'验证失败：{str(e)}'}), 400
     except Exception as e:
-        logger.error(f"处理Google回调时出错: {str(e)}")
-        if 'invalid_grant' in str(e):
-            return redirect(url_for('auth.google_login'))
-        return redirect(url_for('views.index', error='认证失败，请稍后重试'))
+        logger.error(f"处理回调失败: {str(e)}")
+        return jsonify({'error': '认证失败，请稍后重试', 'details': str(e)}), 500
+
+@auth_bp.route('/google/logout')
+def google_logout():
+    """退出登录"""
+    try:
+        credentials = session.get('credentials')
+        if credentials and credentials.get('token'):
+            # 撤销令牌
+            if not auth_service.revoke_token(credentials['token']):
+                logger.warning("令牌撤销失败，但继续执行登出流程")
+
+        # 清除session
+        session.clear()
+        logger.info("用户已退出登录")
+        return redirect('/')
+    except Exception as e:
+        logger.error(f"退出登录失败: {str(e)}")
+        return jsonify({'error': '退出失败，请稍后重试', 'details': str(e)}), 500
