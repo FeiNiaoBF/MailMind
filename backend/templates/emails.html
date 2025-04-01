@@ -1,239 +1,239 @@
 {% extends "base.html" %}
 
-{% block title %}MailMind - 邮件分析{% endblock %}
+{% block title %}MailMind - 我的邮件{% endblock %}
 
 {% block content %}
-<div class="bg-white shadow rounded-lg overflow-hidden">
-  <div class="px-4 py-5 sm:p-6">
-    <h1 class="text-3xl font-bold text-gray-900 mb-8 text-center">
-      邮件智能分析
-    </h1>
-
+<div class="max-w-4xl mx-auto">
     {% if not session.get('credentials') %}
-      <div class="text-center py-8">
-        <p class="text-gray-600 mb-4">请先登录以使用邮件分析功能</p>
+    <div class="bg-white shadow rounded-lg p-8 text-center">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-4">请先登录</h2>
+        <p class="text-gray-600 mb-6">
+            登录您的 Google 账号以查看邮件
+        </p>
         <a href="{{ url_for('auth.google_login') }}"
-           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-          <i class="fab fa-google mr-2"></i>
-          使用Google账号登录
+           class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+            <i class="fab fa-google mr-2"></i>
+            使用 Google 账号登录
         </a>
-      </div>
+    </div>
     {% else %}
-      <!-- 原有的邮件分析功能 -->
-      <div class="space-y-6">
-        <!-- 邮件上传区域 -->
-        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-          <div class="space-y-2">
-            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400"></i>
-            <h3 class="text-lg font-medium text-gray-900">上传邮件</h3>
-            <p class="text-sm text-gray-500">支持 .eml 格式的邮件文件</p>
-          </div>
-          <div class="mt-4">
-            <input type="file"
-                   id="email-file"
-                   accept=".eml"
-                   class="hidden"
-                   onchange="handleFileSelect(event)">
-            <button onclick="document.getElementById('email-file').click()"
-                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-              选择文件
+    <!-- 工具栏 -->
+    <div class="bg-white shadow rounded-lg p-4 mb-4">
+        <div class="flex items-center justify-between">
+            <div class="relative flex-1 max-w-lg">
+                <input type="text"
+                       id="searchInput"
+                       placeholder="搜索邮件..."
+                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+            </div>
+            <button id="syncButton"
+                    class="ml-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                <i class="fas fa-sync-alt mr-2"></i>
+                同步
             </button>
-          </div>
+        </div>
+    </div>
+
+    <!-- 邮件列表 -->
+    <div class="bg-white shadow rounded-lg">
+        <div id="emailList" class="divide-y divide-gray-200">
+            <!-- 邮件列表将在这里显示 -->
         </div>
 
-        <!-- 分析结果区域 -->
-        <div id="analysis-result" class="hidden">
-          <h2 class="text-xl font-semibold text-gray-900 mb-4">分析结果</h2>
-          <div class="bg-gray-50 rounded-lg p-4">
-            <div id="result-content" class="prose max-w-none">
-              <!-- 分析结果将在这里显示 -->
-            </div>
-          </div>
+        <!-- 分页控件 -->
+        <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 sm:px-6 flex items-center justify-between">
+            <button id="prevPage"
+                    class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fas fa-chevron-left mr-1"></i>
+                上一页
+            </button>
+            <span id="pageInfo" class="text-sm text-gray-700"></span>
+            <button id="nextPage"
+                    class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                下一页
+                <i class="fas fa-chevron-right ml-1"></i>
+            </button>
         </div>
-      </div>
+    </div>
     {% endif %}
-  </div>
 </div>
 
 {% if session.get('credentials') %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const apiKeyInput = document.getElementById('apiKey');
-    const providerSelect = document.getElementById('provider');
-    const modelSelect = document.getElementById('model');
-    const temperatureInput = document.getElementById('temperature');
-    const temperatureValue = document.getElementById('temperatureValue');
-    const validateBtn = document.getElementById('validateBtn');
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const fileList = document.getElementById('fileList');
-    const analysisResults = document.getElementById('analysisResults');
+    document.addEventListener('DOMContentLoaded', function () {
+        const emailList = document.getElementById('emailList');
+        const syncButton = document.getElementById('syncButton');
+        const prevPage = document.getElementById('prevPage');
+        const nextPage = document.getElementById('nextPage');
+        const pageInfo = document.getElementById('pageInfo');
+        const searchInput = document.getElementById('searchInput');
 
-    // 初始化 AI 配置
-    initAIConfig();
+        let currentPage = 1;
+        const perPage = 20;
+        let searchTerm = '';
 
-    // 温度滑块事件
-    temperatureInput.addEventListener('input', function() {
-        temperatureValue.textContent = this.value;
+        // 初始加载邮件列表
+        loadEmails();
+
+        // 同步按钮点击事件
+        syncButton.addEventListener('click', syncEmails);
+
+        // 分页按钮点击事件
+        prevPage.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                loadEmails();
+            }
+        });
+
+        nextPage.addEventListener('click', () => {
+            currentPage++;
+            loadEmails();
+        });
+
+        // 搜索输入事件
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchTerm = e.target.value;
+                currentPage = 1;
+                loadEmails();
+            }, 300);
+        });
+
+        //  同步邮件
+        async function syncEmails() {
+            try {
+                syncButton.disabled = true;
+                syncButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>同步中';
+
+                const response = await fetch('/api/email/sync/manual', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({days: 1})
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                showMessage('同步任务已启动', 'success');
+                // 等待一段时间后刷新列表
+                setTimeout(loadEmails, 2000);
+            } catch (error) {
+                showMessage('同步失败：' + error.message, 'error');
+            } finally {
+                syncButton.disabled = false;
+                syncButton.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>同步';
+            }
+        }
+
+        // 加载邮件列表
+        async function loadEmails() {
+            try {
+                const response = await fetch(`/api/email/list?page=${currentPage}&per_page=${perPage}`);
+                const data = await response.json();
+                console.log('收到邮件列表数据:', data);  // 添加日志
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                displayEmails(data);
+                updatePagination(data);
+            } catch (error) {
+                console.error('加载邮件失败:', error);
+                showMessage('加载邮件失败：' + error.message, 'error');
+            }
+        }
+
+        // 显示邮件列表
+        function displayEmails(data) {
+            emailList.innerHTML = '';
+            console.log('开始显示邮件列表, 数据:', data);  // 添加日志
+
+            if (!data.emails || data.emails.length === 0) {
+                emailList.innerHTML = '<div class="p-4 text-center text-gray-500">暂无邮件</div>';
+                return;
+            }
+
+            data.emails.forEach(email => {
+                console.log('处理邮件:', email);  // 添加日志
+                const date = new Date(email.received_at);
+                const emailDiv = document.createElement('div');
+                emailDiv.className = 'p-4 hover:bg-gray-50 cursor-pointer';
+                emailDiv.innerHTML = `
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span class="text-blue-600 text-sm font-medium">
+                                ${email.from_email ? email.from_email.charAt(0).toUpperCase() : '?'}
+                            </span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex justify-between">
+                                <p class="text-sm font-medium text-gray-900 truncate">
+                                    ${email.from_email || '未知发件人'}
+                                </p>
+                                <p class="text-sm text-gray-500">
+                                    ${formatDate(date)}
+                                </p>
+                            </div>
+                            <p class="mt-1 text-sm font-medium text-gray-900 line-clamp-1">
+                                ${email.subject || '(无主题)'}
+                            </p>
+                            <p class="mt-1 text-sm text-gray-500 line-clamp-2">
+                                ${email.body || ''}
+                            </p>
+                        </div>
+                    </div>
+                `;
+                emailList.appendChild(emailDiv);
+            });
+            console.log('邮件列表显示完成');  // 添加日志
+        }
+
+        function formatDate(date) {
+            const now = new Date();
+            const diff = now - date;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+            if (days === 0) {
+                return date.toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'});
+            } else if (days === 1) {
+                return '昨天';
+            } else if (days < 7) {
+                return `${days}天前`;
+            } else {
+                return date.toLocaleDateString('zh-CN', {month: 'short', day: 'numeric'});
+            }
+        }
+
+        function updatePagination(data) {
+            const totalPages = Math.ceil(data.total / perPage);
+            pageInfo.textContent = `第 ${currentPage} 页，共 ${totalPages} 页`;
+            prevPage.disabled = currentPage <= 1;
+            nextPage.disabled = currentPage >= totalPages;
+        }
+
+        function showMessage(message, type = 'info') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `fixed top-4 right-4 p-4 rounded-lg ${
+                type === 'success' ? 'bg-green-100 text-green-800' :
+                    type === 'error' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800'
+            }`;
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+            setTimeout(() => messageDiv.remove(), 3000);
+        }
     });
-
-    // 验证 API 配置
-    validateBtn.addEventListener('click', validateAPI);
-
-    // 文件拖放事件
-    dropZone.addEventListener('dragover', handleDragOver);
-    dropZone.addEventListener('dragleave', handleDragLeave);
-    dropZone.addEventListener('drop', handleDrop);
-    fileInput.addEventListener('change', handleFileSelect);
-
-    async function validateAPI() {
-        const apiKey = apiKeyInput.value;
-        const provider = providerSelect.value;
-        const model = modelSelect.value;
-
-        if (!apiKey || !provider || !model) {
-            alert('请填写完整的 API 配置信息');
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/ai/validate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    api_key: apiKey,
-                    provider: provider,
-                    model: model
-                })
-            });
-
-            const data = await response.json();
-            if (data.valid) {
-                alert('API 配置验证成功');
-                fileInput.disabled = false;
-            } else {
-                alert(data.message || 'API 配置验证失败');
-            }
-        } catch (error) {
-            alert('验证失败：' + error.message);
-        }
-    }
-
-    function handleDragOver(e) {
-        e.preventDefault();
-        dropZone.classList.add('border-blue-500');
-    }
-
-    function handleDragLeave(e) {
-        e.preventDefault();
-        dropZone.classList.remove('border-blue-500');
-    }
-
-    function handleDrop(e) {
-        e.preventDefault();
-        dropZone.classList.remove('border-blue-500');
-        const files = e.dataTransfer.files;
-        handleFiles(files);
-    }
-
-    function handleFileSelect(event) {
-        const file = event.target.files[0];
-        if (file) {
-            // 处理文件上传和分析
-            // ... 原有的代码 ...
-        }
-    }
-
-    function handleFiles(files) {
-        for (const file of files) {
-            if (file.name.endsWith('.eml') || file.name.endsWith('.txt')) {
-                addFileToList(file);
-                analyzeFile(file);
-            } else {
-                alert('不支持的文件格式：' + file.name);
-            }
-        }
-    }
-
-    function addFileToList(file) {
-        const fileDiv = document.createElement('div');
-        fileDiv.className = 'flex items-center justify-between p-2 bg-gray-50 rounded';
-        fileDiv.innerHTML = `
-            <span class="text-sm">${file.name}</span>
-            <span class="text-sm text-gray-500">${formatFileSize(file.size)}</span>
-        `;
-        fileList.appendChild(fileDiv);
-    }
-
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    async function analyzeFile(file) {
-        const apiKey = apiKeyInput.value;
-        const provider = providerSelect.value;
-        const model = modelSelect.value;
-        const temperature = parseFloat(temperatureInput.value);
-
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('api_key', apiKey);
-            formData.append('provider', provider);
-            formData.append('model', model);
-            formData.append('temperature', temperature);
-
-            const response = await fetch('/api/ai/analyze', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            displayAnalysisResult(file.name, data);
-        } catch (error) {
-            displayError(file.name, error.message);
-        }
-    }
-
-    function displayAnalysisResult(fileName, data) {
-        const resultDiv = document.createElement('div');
-        resultDiv.className = 'bg-gray-50 rounded-lg p-4';
-        resultDiv.innerHTML = `
-            <h3 class="font-semibold mb-2">${fileName}</h3>
-            <div class="space-y-2">
-                <p><strong>主题：</strong>${data.subject || '无'}</p>
-                <p><strong>发件人：</strong>${data.sender || '无'}</p>
-                <p><strong>收件人：</strong>${data.recipient || '无'}</p>
-                <p><strong>日期：</strong>${data.date || '无'}</p>
-                <p><strong>内容摘要：</strong>${data.summary || '无'}</p>
-                <p><strong>情感分析：</strong>${data.sentiment || '无'}</p>
-                <p><strong>关键词：</strong>${data.keywords?.join(', ') || '无'}</p>
-                <p><strong>建议回复：</strong>${data.reply_suggestion || '无'}</p>
-            </div>
-        `;
-        analysisResults.appendChild(resultDiv);
-    }
-
-    function displayError(fileName, error) {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'bg-red-50 text-red-700 rounded-lg p-4';
-        errorDiv.innerHTML = `
-            <h3 class="font-semibold mb-2">${fileName}</h3>
-            <p>分析失败：${error}</p>
-        `;
-        analysisResults.appendChild(errorDiv);
-    }
-});
 </script>
 {% endif %}
 {% endblock %}

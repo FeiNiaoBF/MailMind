@@ -29,6 +29,7 @@ flask-mail = "^0.9.1"
 pytz = "^2025.2"
 apscheduler = "^3.10.4"
 httpx = "^0.26.0"
+flask-migrate = "^4.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

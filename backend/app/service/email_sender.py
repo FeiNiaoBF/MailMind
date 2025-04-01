@@ -1,33 +1,32 @@
 """
-邮件发送服务
-用于:
-1. 将分析的邮箱发送给自己的邮件
+邮件发送服务模块
+处理邮件发送相关的业务逻辑
 """
-from typing import Optional
-from flask_mail import Mail
-from backend.app.utils.logger import get_logger
+from typing import Dict, Any
+from ..utils.logger import get_logger
+from ..models import User
 
 logger = get_logger(__name__)
 
-
 class EmailSenderService:
-    """邮件发送服务"""
+    """邮件发送服务类"""
 
     def __init__(self):
-        """初始化服务"""
-        self.mail = Mail()
-
-    def send_email_to_me(
-            self,
-            subject: str,
-            body: str,
-            html_body: Optional[str] = None,
-    ) -> bool:
-        """
-        发送邮件
-        :param subject: 邮件主题
-        :param body: 邮件正文
-        :param html_body: 邮件HTML正文
-        :return: 是否成功
-        """
+        """初始化邮件发送服务"""
         pass
+
+    async def send_email(self, service, user: User, email_data: Dict[str, Any]) -> bool:
+        """发送邮件
+        Args:
+            service: Gmail API服务实例
+            user: 用户对象
+            email_data: 邮件数据
+        Returns:
+            bool: 是否发送成功
+        """
+        try:
+            # TODO: 实现邮件发送逻辑
+            return True
+        except Exception as e:
+            logger.error(f"发送邮件失败: {str(e)}")
+            raise

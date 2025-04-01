@@ -1,5 +1,5 @@
 """
-模型包
+模型模块
 """
 from .user import User
 from .email import Email

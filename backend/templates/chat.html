@@ -1,287 +1,224 @@
 {% extends "base.html" %}
 
-{% block title %}AI 对话{% endblock %}
+{% block title %}AI 对话 - MailMind{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-4xl mx-auto">
-        <!-- AI 配置部分 -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-xl font-semibold mb-4">AI 配置</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">API 密钥</label>
-                    <input type="password" id="apiKey"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    <p class="mt-1 text-sm text-gray-500">请输入您的 DeepSeek API 密钥</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">服务提供商</label>
-                    <select id="provider"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">请选择服务提供商</option>
-                    </select>
-                    <p class="mt-1 text-sm text-gray-500">目前支持 DeepSeek 服务</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">模型</label>
-                    <select id="model"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">请先选择服务提供商</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">温度 (Temperature)</label>
-                    <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7"
-                           class="mt-1 block w-full">
-                    <span id="temperatureValue" class="text-sm text-gray-500">0.7</span>
-                    <p class="mt-1 text-sm text-gray-500">值越高，回答越有创造性；值越低，回答越确定性</p>
-                </div>
-            </div>
-            <div class="mt-4">
-                <button id="validateBtn"
-                        class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                    验证配置
-                </button>
-            </div>
-        </div>
+<div class="bg-white shadow rounded-lg">
+  <!-- 页面标题 -->
+  <div class="px-4 py-5 sm:px-6">
+    <h3 class="text-lg leading-6 font-medium text-gray-900">AI 对话</h3>
+  </div>
 
-        <!-- 聊天区域 -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <div id="chatArea" class="h-[500px] overflow-y-auto mb-4 border rounded-lg p-4">
-                <div class="text-gray-500 text-center">
-                    请先验证 API 配置以开始对话
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <input type="text" id="messageInput"
-                       class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                       placeholder="输入消息..." disabled>
-                <button id="sendBtn"
-                        class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                        disabled>
-                    发送
-                </button>
-            </div>
+  <!-- 主要内容 -->
+  <div class="border-t border-gray-200">
+    <div class="px-4 py-5 sm:p-6">
+      <!-- AI 配置 -->
+      <div class="mb-6">
+        <h4 class="text-sm font-medium text-gray-900 mb-4">AI 配置</h4>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label for="api-key" class="block text-sm font-medium text-gray-700">API 密钥</label>
+            <input type="password" id="api-key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+          </div>
+          <div>
+            <label for="model" class="block text-sm font-medium text-gray-700">模型</label>
+            <select id="model" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+              <option value="deepseek-chat">DeepSeek-V3</option>
+              <option value="deepseek-reasoner">DeepSeek-R1</option>
+            </select>
+          </div>
         </div>
+        <div class="mt-4">
+          <button id="validate-btn" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+            <i class="fas fa-check mr-2"></i>
+            验证配置
+          </button>
+        </div>
+      </div>
+
+      <!-- 对话区域 -->
+      <div class="mb-6">
+        <div class="bg-gray-50 rounded-lg p-4 min-h-[300px] mb-4 overflow-y-auto" id="chat-messages">
+          <p class="text-sm text-gray-500">对话内容将在这里显示...</p>
+        </div>
+        <div class="flex space-x-2">
+          <input type="text" id="message-input" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="输入消息...">
+          <button id="send-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+            <i class="fas fa-paper-plane mr-2"></i>
+            发送
+          </button>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const apiKeyInput = document.getElementById('apiKey');
-        const providerSelect = document.getElementById('provider');
-        const modelSelect = document.getElementById('model');
-        const temperatureInput = document.getElementById('temperature');
-        const temperatureValue = document.getElementById('temperatureValue');
-        const validateBtn = document.getElementById('validateBtn');
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const chatArea = document.getElementById('chatArea');
+// 初始化
+document.addEventListener('DOMContentLoaded', function() {
+  setupEventListeners();
+  loadConfig();
+});
 
-        // AI 服务提供商和模型配置
-        const AI_PROVIDERS = {
-            'deepseek': {
-                name: 'DeepSeek',
-                models: {
-                    'deepseek-chat': 'DeepSeek Chat',
-                    'deepseek-reasoner': 'DeepSeek Reasoner',
-                }
-            },
-            'openai': {
-                name: 'OpenAI',
-                models: {
-                    'gpt-4': 'GPT-4'
-                }
-            },
-        };
+// 设置事件监听器
+function setupEventListeners() {
+  // 验证按钮
+  document.getElementById('validate-btn').addEventListener('click', validateConfig);
 
-        // 初始化 AI 配置
-        function initAIConfig() {
-            // 初始化服务提供商选项
-            providerSelect.innerHTML = '<option value="">请选择服务提供商</option>';
-            for (const [providerId, provider] of Object.entries(AI_PROVIDERS)) {
-                const option = document.createElement('option');
-                option.value = providerId;
-                option.textContent = provider.name;
-                providerSelect.appendChild(option);
-            }
+  // 发送按钮
+  document.getElementById('send-btn').addEventListener('click', sendMessage);
 
-            // 监听服务提供商变化
-            providerSelect.addEventListener('change', function () {
-                updateModelOptions(this.value);
-            });
+  // 输入框回车发送
+  document.getElementById('message-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  });
+}
 
-            // 从本地存储加载之前的配置
-            const savedConfig = JSON.parse(localStorage.getItem('aiConfig') || '{}');
-            if (savedConfig.apiKey) apiKeyInput.value = savedConfig.apiKey;
-            if (savedConfig.provider) {
-                providerSelect.value = savedConfig.provider;
-                updateModelOptions(savedConfig.provider);
-                if (savedConfig.model) modelSelect.value = savedConfig.model;
-            }
-            if (savedConfig.temperature) {
-                temperatureInput.value = savedConfig.temperature;
-                temperatureValue.textContent = savedConfig.temperature;
-            }
-        }
+// 加载配置
+async function loadConfig() {
+  try {
+    const response = await fetch('/api/ai/config');
+    const data = await response.json();
 
-        // 更新模型选项
-        function updateModelOptions(providerId) {
-            modelSelect.innerHTML = '<option value="">请选择模型</option>';
-            if (providerId && AI_PROVIDERS[providerId]) {
-                const models = AI_PROVIDERS[providerId].models;
-                for (const [modelId, modelName] of Object.entries(models)) {
-                    const option = document.createElement('option');
-                    option.value = modelId;
-                    option.textContent = modelName;
-                    modelSelect.appendChild(option);
-                }
-            }
-        }
+    if (data.api_key) {
+      document.getElementById('api-key').value = data.api_key;
+    }
+    if (data.model) {
+      document.getElementById('model').value = data.model;
+    }
+  } catch (error) {
+    console.error('加载配置失败:', error);
+  }
+}
 
-        // 保存配置到本地存储
-        function saveConfig() {
-            const config = {
-                apiKey: apiKeyInput.value,
-                provider: providerSelect.value,
-                model: modelSelect.value,
-                temperature: temperatureInput.value
-            };
-            localStorage.setItem('aiConfig', JSON.stringify(config));
-        }
+// 验证配置
+async function validateConfig() {
+  try {
+    const apiKey = document.getElementById('api-key').value;
+    const model = document.getElementById('model').value;
 
-        // 初始化 AI 配置
-        initAIConfig();
+    if (!apiKey) {
+      showError('请输入 API 密钥');
+      return;
+    }
 
-        // 温度滑块事件
-        temperatureInput.addEventListener('input', function () {
-            temperatureValue.textContent = this.value;
-            saveConfig();
-        });
-
-        // 配置变化时保存
-        apiKeyInput.addEventListener('change', saveConfig);
-        providerSelect.addEventListener('change', saveConfig);
-        modelSelect.addEventListener('change', saveConfig);
-
-        // 验证 API 配置
-        validateBtn.addEventListener('click', validateAPI);
-
-        // 发送消息
-        sendBtn.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        async function validateAPI() {
-            const apiKey = apiKeyInput.value;
-            const provider = providerSelect.value;
-            const model = modelSelect.value;
-
-            if (!apiKey || !provider || !model) {
-                alert('请填写完整的 API 配置信息');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/ai/validate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        api_key: apiKey,
-                        provider: provider,
-                        model: model
-                    })
-                });
-
-                const data = await response.json();
-                if (data.valid) {
-                    alert('API 配置验证成功');
-                    messageInput.disabled = false;
-                    sendBtn.disabled = false;
-                    appendMessage('system', 'AI 助手已就绪，可以开始对话了');
-                } else {
-                    alert(data.message || 'API 配置验证失败');
-                }
-            } catch (error) {
-                alert('验证失败：' + error.message);
-            }
-        }
-
-        async function sendMessage() {
-            const message = messageInput.value.trim();
-            if (!message) return;
-
-            const apiKey = apiKeyInput.value;
-            const provider = providerSelect.value;
-            const model = modelSelect.value;
-            const temperature = parseFloat(temperatureInput.value);
-
-            // 禁用输入和发送按钮
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-
-            // 显示用户消息
-            appendMessage('user', message);
-            messageInput.value = '';
-
-            try {
-                const response = await fetch('/api/ai/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: message,
-                        api_key: apiKey,
-                        provider: provider,
-                        model: model,
-                        temperature: temperature
-                    })
-                });
-
-                const data = await response.json();
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-
-                // 显示 AI 回复
-                appendMessage('assistant', data.response);
-            } catch (error) {
-                appendMessage('system', '错误：' + error.message);
-            } finally {
-                // 重新启用输入和发送按钮
-                messageInput.disabled = false;
-                sendBtn.disabled = false;
-                messageInput.focus();
-            }
-        }
-
-        function appendMessage(role, content) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `mb-4 ${role === 'user' ? 'text-right' : ''}`;
-
-            const bubble = document.createElement('div');
-            bubble.className = `inline-block p-3 rounded-lg ${
-                role === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : role === 'assistant'
-                        ? 'bg-gray-100 text-gray-800'
-                        : 'bg-yellow-100 text-yellow-800'
-            }`;
-
-            bubble.textContent = content;
-            messageDiv.appendChild(bubble);
-            chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
+    const response = await fetch('/api/ai/validate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        api_key: apiKey,
+        model: model
+      })
     });
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    if (data.valid) {
+      showSuccess('配置验证成功');
+    } else {
+      showError(data.message || '配置验证失败');
+    }
+
+  } catch (error) {
+    console.error('验证配置失败:', error);
+    showError('验证配置失败');
+  }
+}
+
+// 发送消息
+async function sendMessage() {
+  try {
+    const messageInput = document.getElementById('message-input');
+    const message = messageInput.value.trim();
+
+    if (!message) {
+      return;
+    }
+
+    const apiKey = document.getElementById('api-key').value;
+    const model = document.getElementById('model').value;
+
+    if (!apiKey) {
+      showError('请先配置 API 密钥');
+      return;
+    }
+
+    // 添加用户消息到对话区域
+    appendMessage('user', message);
+    messageInput.value = '';
+
+    const response = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        api_key: apiKey,
+        model: model,
+        message: message
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    // 添加 AI 回复到对话区域
+    appendMessage('ai', data.reply);
+
+  } catch (error) {
+    console.error('发送消息失败:', error);
+    showError('发送消息失败');
+  }
+}
+
+// 添加消息到对话区域
+function appendMessage(role, content) {
+  const messagesDiv = document.getElementById('chat-messages');
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `mb-4 ${role === 'user' ? 'text-right' : ''}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = `inline-block rounded-lg p-3 max-w-[80%] ${
+    role === 'user'
+      ? 'bg-blue-100 text-blue-900'
+      : 'bg-gray-100 text-gray-900'
+  }`;
+  bubble.textContent = content;
+
+  messageDiv.appendChild(bubble);
+  messagesDiv.appendChild(messageDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// 显示成功消息
+function showSuccess(message) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'fixed top-4 right-4 bg-green-100 text-green-900 px-4 py-2 rounded-lg shadow';
+  messageDiv.textContent = message;
+  document.body.appendChild(messageDiv);
+  setTimeout(() => messageDiv.remove(), 3000);
+}
+
+// 显示错误消息
+function showError(message) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'fixed top-4 right-4 bg-red-100 text-red-900 px-4 py-2 rounded-lg shadow';
+  messageDiv.textContent = message;
+  document.body.appendChild(messageDiv);
+  setTimeout(() => messageDiv.remove(), 3000);
+}
 </script>
 {% endblock %}

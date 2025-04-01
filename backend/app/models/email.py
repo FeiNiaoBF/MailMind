@@ -1,39 +1,41 @@
 """
-邮件模型模块
+邮件模型
 """
 from datetime import datetime
-from ..db.database import db
+from ..db.database import db, BaseModel
 
-
-class Email(db.Model):
+class Email(BaseModel):
     """邮件模型"""
     __tablename__ = 'emails'
 
-    id = db.Column(db.Integer, primary_key=True)
-    message_id = db.Column(db.String(255), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    message_id = db.Column(db.String(255), unique=True, nullable=True)
     subject = db.Column(db.String(255))
-    sender = db.Column(db.String(255))
-    recipient = db.Column(db.String(255))
+    from_email = db.Column(db.String(255))
+    to_email = db.Column(db.String(255))
     body = db.Column(db.Text)
     html_body = db.Column(db.Text)
-    received_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    received_at = db.Column(db.DateTime, default=datetime.now)
+    attachments = db.Column(db.JSON)
 
-    def to_dict(self) -> dict:
-        """转换为字典"""
-        return {
-            'id': self.id,
+    # 关系
+    user = db.relationship('User', backref=db.backref('emails', lazy=True))
+
+    def __repr__(self):
+        return f'<Email {self.subject}>'
+
+    def to_dict(self):
+        """转换为字典格式"""
+        base_dict = super().to_dict()
+        base_dict.update({
+            'user_id': self.user_id,
             'message_id': self.message_id,
             'subject': self.subject,
-            'sender': self.sender,
-            'recipient': self.recipient,
+            'from_email': self.from_email,
+            'to_email': self.to_email,
             'body': self.body,
             'html_body': self.html_body,
             'received_at': self.received_at.isoformat() if self.received_at else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
-        }
-
-    def __repr__(self):
-        return f'<Email {self.message_id}>'
+            'attachments': self.attachments
+        })
+        return base_dict

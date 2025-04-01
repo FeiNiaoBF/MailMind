@@ -7,7 +7,8 @@
 """
 from typing import List, Dict, Any
 from bs4 import BeautifulSoup
-from backend.app.utils.logger import get_logger
+from ..utils.logger import get_logger
+from ..models import Email
 
 logger = get_logger(__name__)
 
@@ -17,7 +18,7 @@ class EmailPreprocessor:
 
     def __init__(self):
         """初始化邮件预处理器"""
-        super().__init__()
+        pass
 
     def process(self, email: Dict[str, Any]) -> Dict[str, Any]:
         """处理单个邮件
@@ -171,93 +172,40 @@ class EmailAnalyzer:
 
 
 class EmailAnalysisService:
-    """邮件分析服务"""
+    """邮件分析服务类"""
 
     def __init__(self):
-        self.db = db
+        """初始化邮件分析服务"""
+        pass
 
-    async def analyze_email(self, email: Email) -> Analysis:
-        """分析邮件
-
+    def analyze_email(self, email: Email) -> Dict[str, Any]:
+        """分析邮件内容
         Args:
             email: 邮件对象
-
         Returns:
-            分析结果
+            Dict[str, Any]: 分析结果
         """
         try:
-            # 检查是否已分析
-            existing_analysis = Analysis.query.filter_by(email_id=email.id).first()
-            if existing_analysis:
-                return existing_analysis
-
-            # 获取邮件内容
-            content = self._prepare_content(email)
-
-            # 调用AI服务进行分析
-            result = await self._analyze_with_ai(content)
-
-            # 保存分析结果
-            analysis = Analysis(
-                email_id=email.id,
-                user_id=email.user_id,
-                summary=result['summary'],
-                keywords=result['keywords'],
-                sentiment=result['sentiment'],
-                model_used='deepseek'  # 默认使用deepseek模型
-            )
-
-            self.db.session.add(analysis)
-
-            # 更新邮件状态
-            email.is_analyzed = True
-            email.analysis_status = 'completed'
-            email.last_analysis = datetime.utcnow()
-
-            # 提交事务
-            self.db.session.commit()
-
-            return analysis
-
+            # TODO: 实现邮件分析逻辑
+            return {
+                "sentiment": "neutral",
+                "keywords": [],
+                "categories": [],
+                "priority": "normal"
+            }
         except Exception as e:
-            self.db.session.rollback()
-            # 更新邮件状态
-            email.analysis_status = 'failed'
-            email.analysis_error = str(e)
-            self.db.session.commit()
-            raise AnalysisError(f"Failed to analyze email: {str(e)}")
+            logger.error(f"分析邮件失败: {str(e)}")
+            raise
 
-    def _prepare_content(self, email: Email) -> str:
-        """准备邮件内容
-
+    def analyze_emails(self, emails: List[Email]) -> List[Dict[str, Any]]:
+        """批量分析邮件
         Args:
-            email: 邮件对象
-
+            emails: 邮件列表
         Returns:
-            处理后的邮件内容
+            List[Dict[str, Any]]: 分析结果列表
         """
-        # 优先使用纯文本内容
-        content = email.body or email.html_body or ''
-
-        # 移除HTML标签
-        if email.html_body:
-            # TODO: 实现HTML标签移除
-            pass
-
-        return content
-
-    async def _analyze_with_ai(self, content: str) -> Dict[str, Any]:
-        """使用AI服务分析内容
-
-        Args:
-            content: 邮件内容
-
-        Returns:
-            分析结果
-        """
-        # TODO: 实现AI分析逻辑
-        return {
-            'summary': '邮件摘要',
-            'keywords': ['关键词1', '关键词2'],
-            'sentiment': 'positive'
-        }
+        try:
+            return [self.analyze_email(email) for email in emails]
+        except Exception as e:
+            logger.error(f"批量分析邮件失败: {str(e)}")
+            raise
