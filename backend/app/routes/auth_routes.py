@@ -4,8 +4,7 @@
 """
 from datetime import datetime
 from flask import Blueprint, request, redirect, url_for, session, jsonify
-from ..service.auth_service import AuthService
-from ..service.email_sync import EmailSyncService
+from ..service.service_manager import ServiceManager
 from ..models import User
 from ..db.database import db
 from ..utils.logger import get_logger
@@ -13,8 +12,6 @@ import secrets
 
 logger = get_logger(__name__)
 auth_bp = Blueprint('auth', __name__)
-auth_service = AuthService()
-email_sync_service = EmailSyncService()
 
 @auth_bp.route('/google/login')
 def google_login():
@@ -26,6 +23,7 @@ def google_login():
         session.permanent = True
 
         # 获取认证URL
+        auth_service = ServiceManager.get_auth_service()
         auth_url = auth_service.get_auth_url(state)
         logger.info(f"开始Google认证流程 - state: {state}")
         return redirect(auth_url)
@@ -54,32 +52,29 @@ def google_callback():
             return jsonify({'error': '无效的认证请求：state不匹配'}), 400
 
         # 处理回调
+        auth_service = ServiceManager.get_auth_service()
         result = auth_service.handle_callback(request.url)
         if not result:
             logger.error("处理回调返回空结果")
             return jsonify({'error': '认证失败：未获取到用户信息'}), 401
 
         # 获取或创建用户
-        user = User.query.filter_by(email=result['user']['email']).first()
+        user = auth_service.get_or_create_user(result['user'], session['credentials'])
         if not user:
-            user = User(
-                email=result['user']['email'],
-                provider_id=result['user']['provider_id'],
-                auth_provider='google',
-                access_token=session['credentials']['token'],
-                refresh_token=session['credentials']['refresh_token']
-            )
-            db.session.add(user)
+            return jsonify({'error': '保存用户信息失败'}), 500
+
+        # 初始化邮件服务并启动同步
+        email_service = ServiceManager.get_email_service()
+        if not email_service:
+            logger.error("邮件服务初始化失败")
+            session['sync_error'] = "邮件服务初始化失败"
         else:
-            user.access_token = session['credentials']['token']
-            user.refresh_token = session['credentials']['refresh_token']
-            user.last_login = datetime.now()
-
-        db.session.commit()
-
-        # 启动定时同步任务
-        email_sync_service.schedule_sync_for_user(user)
-        logger.info(f"已为用户 {user.email} 启动定时同步任务")
+            if not email_service.start_sync(user):
+                logger.error(f"启动邮件同步服务失败: {email_service.sync_error}")
+                session['sync_error'] = email_service.sync_error
+            else:
+                logger.info(f"已为用户 {user.email} 启动邮件同步服务")
+                session['sync_status'] = email_service.sync_status.value
 
         # 清理state
         session.pop('oauth2_state', None)
@@ -99,11 +94,23 @@ def google_callback():
 def google_logout():
     """退出登录"""
     try:
+        auth_service = ServiceManager.get_auth_service()
         credentials = session.get('credentials')
         if credentials and credentials.get('token'):
             # 撤销令牌
             if not auth_service.revoke_token(credentials['token']):
                 logger.warning("令牌撤销失败，但继续执行登出流程")
+
+            # 停止邮件同步
+            if 'user' in session:
+                email_service = ServiceManager.get_email_service()
+                if email_service:
+                    user = auth_service.get_user_by_email(session['user']['email'])
+                    if user:
+                        if not email_service.stop_sync(user):
+                            logger.error(f"停止邮件同步服务失败: {email_service.sync_error}")
+                        else:
+                            logger.info(f"已停止用户 {user.email} 的邮件同步服务")
 
         # 清除session
         session.clear()
@@ -112,3 +119,17 @@ def google_logout():
     except Exception as e:
         logger.error(f"退出登录失败: {str(e)}")
         return jsonify({'error': '退出失败，请稍后重试', 'details': str(e)}), 500
+
+@auth_bp.route('/check_users')
+def check_users():
+    """检查用户数据（仅用于调试）"""
+    try:
+        auth_service = ServiceManager.get_auth_service()
+        users = auth_service.get_all_users()
+        return jsonify({
+            'total_users': len(users),
+            'users': users
+        })
+    except Exception as e:
+        logger.error(f"检查用户数据失败: {str(e)}")
+        return jsonify({'error': str(e)}), 500
