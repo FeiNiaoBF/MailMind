@@ -28,12 +28,12 @@ sequenceDiagram
 
 不对，使用验证码有点麻烦，我打算使用Gmail API登录，然后使用 `OAuth2` 来授权，这样更好点（可能。
 
-| 组件   | 技术方案                  | 特性优势                                   |
-|------|-----------------------|----------------------------------------|
-| 协议支持 | IMAP/SMTP + Gmail API | 双协议支持                                  |
-| 认证方式 | OAuth2.0 + Token      | 生产环境使用Gmail OAuth，测试环境使用Mailtrap Token |
-| 任务调度 | APScheduler           | 支持Cron式调度，动态任务管理                       ||
-| 配置管理 | 环境变量 + Config类        | 实现开发/生产环境零修改切换                         |
+| 组件   | 技术方案             | 特性优势                                   |
+|------|------------------|----------------------------------------|
+| 协议支持 | Gmail API        | 双协议支持                                  |
+| 认证方式 | OAuth2.0 + Token | 生产环境使用Gmail OAuth，测试环境使用Mailtrap Token |
+| 任务调度 | APScheduler      | 支持Cron式调度，动态任务管理                       ||
+| 配置管理 | 环境变量 + Config类   | 实现开发/生产环境零修改切换                         |
 
 [OAuth2.0](https://developers.google.com/identity/protocols/oauth2)
 
@@ -127,10 +127,6 @@ sequenceDiagram
 ```mermaid
 erDiagram
     USER ||--o{ EMAIL: "1:N"
-    USER ||--o{ VERIFICATION_CODE: "1:N"
-    USER ||--o{ TASK_LOG: "1:N"
-    EMAIL ||--o{ ANALYSIS: "1:N"
-
     USERS {
         int id PK
         string email "邮箱地址-UNIQUE"
@@ -154,24 +150,6 @@ erDiagram
         json labels "标签分类"
         datetime created_at "收集时间"
     }
-
-    ANALYSIS {
-        int id PK
-        bigint email_uid FK
-        string analysis_type "summary/keywords/action_items"
-        json result "分析结果"
-        datetime analyzed_at
-        string model_used "如gpt"
-    }
-
-    TASK_LOG {
-        int id PK
-        string task_type "fetch/analyze/send"
-        datetime start_time
-        datetime end_time
-        bool success
-        string error_msg
-    }
 ```
 
 数据库模式应包括三个模型：“**MAIL**”，“**ANALYSIS**”和“**TASK_LOG**”。
@@ -191,21 +169,20 @@ erDiagram
 ```
 
 1. **MAIL**模型应捕获电子邮件元数据，包括发件人、收件人、主题、正文、附件（序列化格式，例如 JSON 或逗号分隔的文件名列表）、标签（序列化格式）和创建时间戳。
-2. **ANALYSIS**模型应存储分析结果，通过外键链接回“MAIL”模型，并包括分析类型（例如情绪分析、主题提取）、分析结果本身（序列化格式）、分析的时间戳和使用的
-   AI 模型（例如“GPT”、“DeepSeek”）。
-3. **TASK_LOG**模型应跟踪任务的执行情况，例如获取、分析和发送电子邮件、记录开始和结束时间、成功状态（布尔值）以及任何错误消息（字符串）。
-4. **USER**模型应存储用户信息，包括电子邮件地址、是否激活、最后登录时间和创建时间戳。
+2. **USER**模型应存储用户信息，包括电子邮件地址、是否激活、最后登录时间和创建时间戳。
 
 ### AI 分析模块
 
+这个是需要预处理的
+
 #### Flask路由集成
 
-| api                          | 作用      |
-|------------------------------|---------|
-| `GET/POST: /api/v1/chat`     | 与AI模型对话 |
-| `GET/POST: /api/v1/analyze`  | 分析邮件内容  |
-| `GET/POST: /api/v1/summary`  | 获取邮件摘要  |
-| `GET/POST: /api/v1/keywords` | 获取邮件关键字 |
+| api                         | 作用      |
+|-----------------------------|---------|
+| `GET/POST: /api/ai/chat`    | 与AI模型对话 |
+| `GET/POST: /api/ai/analyze` | 分析邮件内容  |
+
+等等
 
 #### 配置项
 
